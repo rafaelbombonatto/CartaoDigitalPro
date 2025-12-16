@@ -1,8 +1,8 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from '../lib/routerContext';
 
 const LandingPage: React.FC = () => {
-  const navigate = useNavigate();
+  const { navigate } = useRouter();
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-gold selection:text-black overflow-x-hidden">
@@ -60,7 +60,10 @@ const LandingPage: React.FC = () => {
             >
               Começar Agora <i className="fa-solid fa-arrow-right ml-2"></i>
             </button>
-            <button className="px-8 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold rounded-xl text-lg transition-all backdrop-blur-sm">
+            <button 
+                onClick={() => navigate('/exemplo')}
+                className="px-8 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold rounded-xl text-lg transition-all backdrop-blur-sm"
+            >
               Ver Exemplo
             </button>
           </div>

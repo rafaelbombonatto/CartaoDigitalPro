@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useRouter } from '../lib/routerContext';
 import Background from './Background';
 import ProfileHeader from './ProfileHeader';
 import ActionButton from './ActionButton';
@@ -9,15 +9,19 @@ import { ProfileData, QuickAction, SocialLink } from '../types';
 import { getProfileByAlias } from '../lib/supabase';
 import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS } from '../constants';
 
+interface PublicCardProps {
+    slug: string;
+}
+
 function adjustColor(color: string, amount: number) {
     return '#' + color.replace(/^#/, '').replace(/../g, color => ('0'+Math.min(255, Math.max(0, parseInt(color, 16) + amount)).toString(16)).substr(-2));
 }
 
-const PublicCard: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
+const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
+  const { navigate } = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   // States
   const [profileData, setProfileData] = useState<ProfileData>(DEFAULT_PROFILE);
@@ -26,7 +30,13 @@ const PublicCard: React.FC = () => {
 
   useEffect(() => {
     if (slug) {
-        loadProfile(slug);
+        if (slug === 'exemplo' || slug === 'demo') {
+            // Carrega dados de exemplo instantaneamente
+            setIsDemo(true);
+            setLoading(false);
+        } else {
+            loadProfile(slug);
+        }
     } else {
         setError(true);
         setLoading(false);
@@ -48,7 +58,7 @@ const PublicCard: React.FC = () => {
         const { data, error } = await getProfileByAlias(alias);
         
         if (error || !data) {
-            console.error("Profile not found or public access disabled.");
+            console.warn("Profile fetch failed:", error?.message);
             setError(true);
         } else if (data.content) {
             const content = data.content;
@@ -57,6 +67,7 @@ const PublicCard: React.FC = () => {
             if (content.links) setSocialLinks(content.links);
         }
       } catch (e) {
+          console.error("Unexpected error loading profile:", e);
           setError(true);
       } finally {
           setLoading(false);
@@ -76,13 +87,22 @@ const PublicCard: React.FC = () => {
           <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
               <i className="fa-solid fa-ghost text-6xl text-gray-700 mb-4"></i>
               <h1 className="text-2xl font-bold mb-2">Cartão não encontrado</h1>
-              <p className="text-gray-400 mb-6">O endereço que você digitou não existe ou foi desativado.</p>
-              <button 
-                onClick={() => navigate('/')} 
-                className="bg-gold text-black font-bold px-6 py-3 rounded-full hover:scale-105 transition-transform"
-              >
-                Criar meu próprio cartão
-              </button>
+              <p className="text-gray-400 mb-6">O endereço <strong>/{slug}</strong> não existe ou foi desativado.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={() => navigate('/')} 
+                    className="bg-gold text-black font-bold px-6 py-3 rounded-full hover:scale-105 transition-transform"
+                  >
+                    Criar meu cartão
+                  </button>
+                  <button 
+                    onClick={() => navigate('/exemplo')} 
+                    className="bg-zinc-800 text-white font-bold px-6 py-3 rounded-full hover:bg-zinc-700 transition-colors"
+                  >
+                    Ver Exemplo
+                  </button>
+              </div>
           </div>
       );
   }
@@ -90,6 +110,12 @@ const PublicCard: React.FC = () => {
   return (
     <>
       <Background imageUrl={profileData.backgroundUrl} />
+
+      {isDemo && (
+          <div className="fixed top-0 left-0 w-full bg-indigo-600 text-white text-center text-xs font-bold py-1 z-50">
+              MODO DE DEMONSTRAÇÃO
+          </div>
+      )}
 
       <main className="min-h-screen w-full flex flex-col items-center justify-center p-4 relative z-10 pb-12 animate-fade-in">
         
@@ -120,7 +146,7 @@ const PublicCard: React.FC = () => {
         </div>
         
         {/* Branding discreto */}
-        <a href="/" className="mt-8 text-[10px] text-white/30 uppercase tracking-widest hover:text-gold transition-colors">
+        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="mt-8 text-[10px] text-white/30 uppercase tracking-widest hover:text-gold transition-colors cursor-pointer">
             Criado com CartãoPro
         </a>
 

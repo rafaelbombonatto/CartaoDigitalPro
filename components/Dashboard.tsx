@@ -3,10 +3,10 @@ import { ProfileData, QuickAction, SocialLink, UploadPending } from '../types';
 import Auth from './Auth';
 import { supabase, uploadImage } from '../lib/supabase';
 import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS } from '../constants';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from '../lib/routerContext';
 
 const Dashboard: React.FC = () => {
-  const navigate = useNavigate();
+  const { navigate } = useRouter();
   const [session, setSession] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   

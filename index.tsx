@@ -9,12 +9,17 @@ const mountApp = () => {
     return;
   }
 
-  const root = ReactDOM.createRoot(rootElement);
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
+  try {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+  } catch (error) {
+    console.error("Error mounting React app:", error);
+    rootElement.innerHTML = `<div style="color:red; padding:20px;">Uncaught Error: ${error instanceof Error ? error.message : String(error)}</div>`;
+  }
 };
 
 if (document.readyState === 'loading') {
