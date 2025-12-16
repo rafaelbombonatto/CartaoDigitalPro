@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 
 interface PremiumModalProps {
   isOpen: boolean;
@@ -7,10 +7,24 @@ interface PremiumModalProps {
 }
 
 const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
+  const [isLoading, setIsLoading] = useState(false);
+
   if (!isOpen) return null;
 
-  // URL de Exemplo - Você deve substituir pelo seu "Link de Pagamento" gerado no Painel do Mercado Pago
-  const PAYMENT_LINK = "https://www.mercadopago.com.br/checkout"; 
+  // --- CONFIGURAÇÃO DO MERCADO PAGO ---
+  // 1. Crie um Link de Pagamento no painel do Mercado Pago.
+  // 2. Configure a URL de retorno ("Back URL") no MP para: https://seu-app.com/dashboard
+  // 3. Cole o link gerado abaixo.
+  const PAYMENT_LINK = "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=SEU_ID_DE_PREFERENCIA_AQUI"; 
+  
+  const handleCheckout = () => {
+      setIsLoading(true);
+      
+      // Simula um pequeno delay para feedback visual antes de redirecionar
+      setTimeout(() => {
+          window.location.href = PAYMENT_LINK;
+      }, 1000);
+  };
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -61,8 +75,8 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
                     'Edição ilimitada de informações',
                     'Link personalizado exclusivo',
                     'QR Code de alta resolução',
-                    'Botão "Salvar na Agenda" (vCard)',
-                    'Suporte técnico prioritário'
+                    'Suporte técnico prioritário',
+                    'Remoção da marca d\'água (futuro)'
                 ].map((item, i) => (
                     <div key={i} className="flex items-center gap-3 text-gray-300">
                         <i className="fa-solid fa-check text-gold"></i>
@@ -90,14 +104,22 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
 
         {/* Footer Action */}
         <div className="p-4 bg-zinc-900 border-t border-white/5">
-            <a 
-                href={PAYMENT_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full bg-gold hover:bg-yellow-400 text-black font-bold text-center py-4 rounded-xl shadow-lg hover:shadow-gold/20 hover:-translate-y-1 transition-all"
+            <button
+                onClick={handleCheckout}
+                disabled={isLoading}
+                className="w-full bg-gold hover:bg-yellow-400 text-black font-bold text-center py-4 rounded-xl shadow-lg hover:shadow-gold/20 hover:-translate-y-1 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-                Liberar Acesso Agora <i className="fa-solid fa-lock ml-2 text-xs"></i>
-            </a>
+                {isLoading ? (
+                    <>
+                        <i className="fa-solid fa-circle-notch fa-spin"></i>
+                        Redirecionando...
+                    </>
+                ) : (
+                    <>
+                        Liberar Acesso Agora <i className="fa-solid fa-lock ml-2 text-xs"></i>
+                    </>
+                )}
+            </button>
             <p className="text-center text-[10px] text-gray-600 mt-3">
                 Ambiente criptografado. Liberação imediata após aprovação.
             </p>

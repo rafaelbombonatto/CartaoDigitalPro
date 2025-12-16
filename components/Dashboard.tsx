@@ -21,7 +21,9 @@ const Dashboard: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [pendingUploads, setPendingUploads] = useState<UploadPending[]>([]);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [showPremiumModal, setShowPremiumModal] = useState(false); // Estado para abrir o modal
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [showQRCodeModal, setShowQRCodeModal] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false); // Novo estado para sucesso de pagamento
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
@@ -30,8 +32,12 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setLoadingProfile(false);
+      if (session) {
+          fetchProfile(session.user.id);
+          checkPaymentReturn(); // Verifica se voltou do Mercado Pago
+      } else {
+          setLoadingProfile(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -42,6 +48,24 @@ const Dashboard: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Verifica URL parameters para retorno do Mercado Pago
+  const checkPaymentReturn = () => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    const paymentId = params.get('payment_id');
+    
+    if (status === 'approved' && paymentId) {
+        setPaymentSuccess(true);
+        // Limpa a URL para não processar novamente ao recarregar
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Opcional: Aqui você pode disparar uma atualização manual para o Supabase se não usar Webhooks
+        // Mas a forma correta é esperar o Webhook atualizar o banco.
+        // Vamos atualizar o estado local para dar feedback imediato:
+        setProfileData(prev => ({ ...prev, isPremium: true }));
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -57,9 +81,14 @@ const Dashboard: React.FC = () => {
         
         let loadedProfile = content.profile || DEFAULT_PROFILE;
         
-        // Garante que existe uma data de criação para controle do teste
+        // Garante que existe uma data de criação
         if (!loadedProfile.createdAt) {
             loadedProfile = { ...loadedProfile, createdAt: new Date().toISOString() };
+        }
+        
+        // Se detectamos pagamento aprovado localmente, mantém como true
+        if (paymentSuccess) {
+            loadedProfile.isPremium = true;
         }
         
         setProfileData(loadedProfile);
@@ -67,7 +96,7 @@ const Dashboard: React.FC = () => {
         if (content.actions) setQuickActions(content.actions);
         if (content.links) setSocialLinks(content.links);
       } else {
-        // Novo perfil: define data de criação agora
+        // Novo perfil
         setProfileData({ ...DEFAULT_PROFILE, createdAt: new Date().toISOString() });
       }
     } catch (err) {
@@ -141,7 +170,6 @@ const Dashboard: React.FC = () => {
     if (!session) return;
     setIsSaving(true);
     try {
-      // 1. Verificar Duplicidade de Alias
       const alias = profileData.alias;
       if (!alias || alias.length < 3) {
           throw new Error("O link do cartão deve ter pelo menos 3 caracteres.");
@@ -154,7 +182,6 @@ const Dashboard: React.FC = () => {
 
       let updatedProfile = { ...profileData };
 
-      // Upload Images
       for (const upload of pendingUploads) {
         const publicUrl = await uploadImage(upload.file, session.user.id);
         if (publicUrl) updatedProfile = { ...updatedProfile, [upload.field]: publicUrl };
@@ -163,7 +190,6 @@ const Dashboard: React.FC = () => {
       setProfileData(updatedProfile);
       setPendingUploads([]);
 
-      // Save to DB
       const contentToSave = { profile: updatedProfile, actions: quickActions, links: socialLinks };
       const { error } = await supabase.from('profiles').upsert({
           id: session.user.id,
@@ -205,7 +231,36 @@ const Dashboard: React.FC = () => {
       });
   };
 
-  // --- Helpers para Status da Conta ---
+  const handleDownloadQR = async () => {
+      const alias = profileData.alias || '';
+      const fullUrl = `${window.location.origin}/${alias}`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(fullUrl)}`;
+
+      try {
+          const response = await fetch(qrUrl);
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `qrcode-${alias}.png`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+      } catch (error) {
+          console.error("Erro ao baixar QR Code", error);
+          window.open(qrUrl, '_blank');
+      }
+  };
+
+  const handleQRClick = () => {
+      if (profileData.isPremium) {
+          setShowQRCodeModal(true);
+      } else {
+          setShowPremiumModal(true);
+      }
+  };
+
   const getAccountStatus = () => {
       if (profileData.isPremium) {
           return { type: 'premium', label: 'PREMIUM', color: 'bg-gold text-black', icon: 'fa-crown', clickable: false };
@@ -213,7 +268,7 @@ const Dashboard: React.FC = () => {
       
       const createdAt = new Date(profileData.createdAt || new Date());
       const now = new Date();
-      const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 dias
+      const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); 
       const diffTime = trialEnd.getTime() - now.getTime();
       const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
@@ -248,9 +303,52 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white relative">
+      
+      {/* Confetti / Success Modal se pagamento aprovado */}
+      {paymentSuccess && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 pointer-events-none">
+             <div className="bg-green-600 text-white px-6 py-4 rounded-xl shadow-2xl animate-slide-up flex items-center gap-4 border border-green-400">
+                <i className="fa-solid fa-circle-check text-2xl"></i>
+                <div>
+                    <h3 className="font-bold">Pagamento Confirmado!</h3>
+                    <p className="text-sm">Seu plano Premium vitalício está ativo.</p>
+                </div>
+                <button onClick={() => setPaymentSuccess(false)} className="pointer-events-auto ml-2 hover:text-green-200"><i className="fa-solid fa-times"></i></button>
+             </div>
+          </div>
+      )}
+
       {/* Modal de Pagamento */}
       <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
+
+      {/* Modal de QR Code */}
+      {showQRCodeModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+             <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowQRCodeModal(false)}></div>
+             <div className="relative bg-white dark:bg-zinc-900 border border-gold/20 p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center animate-slide-up">
+                 <button onClick={() => setShowQRCodeModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white"><i className="fa-solid fa-times"></i></button>
+                 
+                 <h2 className="text-xl font-bold text-gold mb-2">Seu QR Code</h2>
+                 <p className="text-sm text-gray-400 mb-6">Escaneie para acessar seu cartão ou faça o download para imprimir.</p>
+                 
+                 <div className="bg-white p-4 rounded-xl mx-auto mb-6 w-64 h-64 flex items-center justify-center">
+                    <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`} 
+                        alt="QR Code" 
+                        className="w-full h-full object-contain"
+                    />
+                 </div>
+
+                 <button 
+                    onClick={handleDownloadQR}
+                    className="w-full bg-gold hover:bg-yellow-400 text-black font-bold py-3 rounded-lg flex items-center justify-center gap-2"
+                 >
+                    <i className="fa-solid fa-download"></i> Baixar Alta Resolução (PNG)
+                 </button>
+             </div>
+        </div>
+      )}
 
       {/* Header Dashboard */}
       <header className="fixed top-0 w-full bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 z-50 h-16 flex items-center justify-between px-4 lg:px-8">
@@ -296,6 +394,7 @@ const Dashboard: React.FC = () => {
                         className="flex-1 bg-transparent p-3 outline-none font-bold text-indigo-500"
                         placeholder="seu-nome"
                     />
+                    
                     {/* Copy Button */}
                     <button 
                         onClick={handleCopyLink}
@@ -307,6 +406,19 @@ const Dashboard: React.FC = () => {
                         ) : (
                             <i className="fa-regular fa-copy"></i>
                         )}
+                    </button>
+
+                    {/* QR Code Button */}
+                    <button 
+                        onClick={handleQRClick}
+                        title="Gerar QR Code"
+                        className={`px-3 py-3 transition-colors border-l border-zinc-800 hover:bg-zinc-900 ${profileData.isPremium ? 'text-gray-400 hover:text-gold' : 'text-gray-600 hover:text-red-400'}`}
+                    >
+                         {profileData.isPremium ? (
+                             <i className="fa-solid fa-qrcode"></i>
+                         ) : (
+                             <i className="fa-solid fa-lock text-xs"></i>
+                         )}
                     </button>
                 </div>
                 <button onClick={viewLiveCard} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg font-bold transition-colors">
