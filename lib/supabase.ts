@@ -7,29 +7,17 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 /*
-  --- INSTRUÇÕES PARA O SQL EDITOR DO SUPABASE ---
-  Execute este SQL no painel do Supabase para criar a estrutura necessária:
+  --- INSTRUÇÕES CRÍTICAS PARA SQL EDITOR DO SUPABASE ---
+  Execute este SQL para garantir que os links públicos funcionem:
 
-  -- 1. Tabela de Perfis
-  create table profiles (
-    id uuid references auth.users not null primary key,
-    updated_at timestamp with time zone,
-    alias text unique,
-    content jsonb
-  );
-
-  -- 2. Políticas de Segurança (RLS) para Perfis
-  alter table profiles enable row level security;
-  create policy "Users can view their own profile" on profiles for select using ( auth.uid() = id );
+  -- 1. Políticas de Segurança (RLS) - ATUALIZADO PARA PERMITIR LEITURA PÚBLICA
+  -- Remova políticas antigas de SELECT se existirem e adicione esta:
+  drop policy if exists "Users can view their own profile" on profiles;
+  create policy "Public profiles are viewable by everyone" on profiles for select using ( true );
+  
+  -- Mantenha as de escrita restritas:
   create policy "Users can update their own profile" on profiles for update using ( auth.uid() = id );
   create policy "Users can insert their own profile" on profiles for insert with check ( auth.uid() = id );
-
-  -- 3. Bucket de Storage para Imagens
-  insert into storage.buckets (id, name, public) values ('images', 'images', true);
-  
-  -- 4. Políticas de Storage
-  create policy "Public Access" on storage.objects for select using ( bucket_id = 'images' ); 
-  create policy "Auth Upload" on storage.objects for insert with check ( bucket_id = 'images' and auth.role() = 'authenticated' );
 */
 
 // Função para upload de imagem
@@ -53,4 +41,15 @@ export const uploadImage = async (file: File, path: string): Promise<string | nu
     console.error('Erro no upload:', error);
     return null;
   }
+};
+
+// Buscar perfil por Slug/Alias (Público)
+export const getProfileByAlias = async (alias: string) => {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('alias', alias)
+        .single();
+    
+    return { data, error };
 };
