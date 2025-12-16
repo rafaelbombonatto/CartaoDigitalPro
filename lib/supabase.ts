@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 
 // Configuração do Supabase com as credenciais fornecidas
@@ -52,4 +53,24 @@ export const getProfileByAlias = async (alias: string) => {
         .single();
     
     return { data, error };
+};
+
+// Verificar disponibilidade do Alias
+export const checkAliasAvailability = async (alias: string, currentUserId: string): Promise<boolean> => {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('alias', alias);
+
+    if (error || !data) return true; // Assume disponível se der erro (ou trate como preferir)
+
+    // Se encontrar algum registro com esse alias
+    for (const profile of data) {
+        // Se o ID for diferente do usuário atual, então já está em uso
+        if (profile.id !== currentUserId) {
+            return false;
+        }
+    }
+    
+    return true;
 };

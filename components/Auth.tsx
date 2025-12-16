@@ -17,8 +17,19 @@ const Auth: React.FC = () => {
     setIsLocalhost(origin.includes('localhost') || origin.includes('127.0.0.1'));
   }, []);
 
+  const validateEmail = (email: string) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateEmail(email)) {
+        setMessage({ text: 'Por favor, insira um endereço de e-mail válido.', type: 'error' });
+        return;
+    }
+
     setLoading(true);
     setMessage(null);
 

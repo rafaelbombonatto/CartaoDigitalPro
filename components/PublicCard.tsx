@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useRouter } from '../lib/routerContext';
 import Background from './Background';
@@ -22,6 +23,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
 
   // States
   const [profileData, setProfileData] = useState<ProfileData>(DEFAULT_PROFILE);
@@ -62,7 +64,21 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             setError(true);
         } else if (data.content) {
             const content = data.content;
-            if (content.profile) setProfileData(content.profile);
+            if (content.profile) {
+                const profile = content.profile as ProfileData;
+                setProfileData(profile);
+                
+                // Verificar Validade do Teste Grátis
+                if (!profile.isPremium) {
+                    const createdAt = new Date(profile.createdAt || new Date().toISOString()); // Se não tiver data, assume hoje (fallback)
+                    const now = new Date();
+                    const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 dias
+                    
+                    if (now > trialEnd) {
+                        setIsExpired(true);
+                    }
+                }
+            }
             if (content.actions) setQuickActions(content.actions);
             if (content.links) setSocialLinks(content.links);
         }
@@ -107,17 +123,55 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       );
   }
 
+  // --- Bloqueio por Expiração ---
+  if (isExpired) {
+      return (
+          <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
+             {/* Background blur effect */}
+             <div className="absolute inset-0 bg-red-900/20 blur-3xl"></div>
+             
+             <div className="relative z-10 max-w-md w-full bg-zinc-900/80 border border-red-500/30 p-8 rounded-2xl backdrop-blur-xl shadow-2xl">
+                <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 text-3xl">
+                    <i className="fa-solid fa-lock"></i>
+                </div>
+                <h1 className="text-2xl font-bold mb-2">Cartão Expirado</h1>
+                <p className="text-gray-400 mb-6 text-sm leading-relaxed">
+                    O período de teste gratuito deste cartão encerrou. Se você é o dono deste cartão, acesse o painel para regularizar.
+                </p>
+                
+                <button 
+                    onClick={() => navigate('/')} 
+                    className="w-full bg-white text-black font-bold px-6 py-3 rounded-lg hover:bg-gray-200 transition-colors mb-4"
+                >
+                    Acessar Painel
+                </button>
+                <p className="text-xs text-gray-600">Este perfil foi criado há mais de 7 dias.</p>
+             </div>
+          </div>
+      );
+  }
+
   return (
     <>
       <Background imageUrl={profileData.backgroundUrl} />
 
       {isDemo && (
-          <div className="fixed top-0 left-0 w-full bg-indigo-600 text-white text-center text-xs font-bold py-1 z-50">
-              MODO DE DEMONSTRAÇÃO
-          </div>
+          <>
+            <div className="fixed top-0 left-0 w-full bg-indigo-600/90 backdrop-blur-sm text-white text-center text-[10px] font-bold py-1 z-50 tracking-widest uppercase">
+                Modo de Demonstração
+            </div>
+            {/* Botão Voltar ao Início */}
+            <button 
+                onClick={() => navigate('/')}
+                className="fixed top-8 left-4 z-50 group flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full hover:bg-white/10 transition-all text-white text-sm font-medium"
+            >
+                <i className="fa-solid fa-arrow-left group-hover:-translate-x-1 transition-transform"></i>
+                <span className="hidden sm:inline">Voltar ao Início</span>
+            </button>
+          </>
       )}
 
-      <main className="min-h-screen w-full flex flex-col items-center justify-center p-4 relative z-10 pb-12 animate-fade-in">
+      <main className={`min-h-screen w-full flex flex-col items-center justify-center p-4 relative z-10 pb-12 animate-fade-in ${isDemo ? 'pt-12' : ''}`}>
         
         <div className="
           w-full max-w-[400px] 
@@ -136,18 +190,18 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
           <div className="w-full grid grid-cols-2 gap-3 mb-2">
             {quickActions.map((action, index) => (
-              <ActionButton key={index} action={action} index={index} />
+              <ActionButton key={index} action={action} index={index} isDemo={isDemo} />
             ))}
           </div>
 
-          <SaveContactButton data={profileData} />
+          <SaveContactButton data={profileData} isDemo={isDemo} />
 
-          <Footer links={socialLinks} />
+          <Footer links={socialLinks} isDemo={isDemo} />
         </div>
         
         {/* Branding discreto */}
         <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="mt-8 text-[10px] text-white/30 uppercase tracking-widest hover:text-gold transition-colors cursor-pointer">
-            Criado com CartãoPro
+            Criado com Cartão Digital Pro
         </a>
 
       </main>

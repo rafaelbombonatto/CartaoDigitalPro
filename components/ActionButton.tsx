@@ -4,12 +4,14 @@ import { QuickAction } from '../types';
 interface ActionButtonProps {
   action: QuickAction;
   index: number;
+  isDemo?: boolean;
 }
 
-const ActionButton: React.FC<ActionButtonProps> = ({ action, index }) => {
+const ActionButton: React.FC<ActionButtonProps> = ({ action, index, isDemo = false }) => {
   const isWhatsApp = action.type === 'whatsapp';
   
   // Hide button if URL is empty or is just the protocol prefix (user cleared the input)
+  // UNLESS it is in Demo mode
   const isValid = action.url && 
                   action.url !== '' && 
                   action.url !== '#' && 
@@ -17,13 +19,22 @@ const ActionButton: React.FC<ActionButtonProps> = ({ action, index }) => {
                   action.url !== 'mailto:' && 
                   action.url !== 'https://maps.google.com/?q=';
 
-  if (!isValid) return null;
+  if (!isValid && !isDemo) return null;
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isDemo) {
+      e.preventDefault();
+      // Opcional: Adicionar um toast ou feedback visual aqui
+      console.log("Clique desabilitado no modo demonstração");
+    }
+  };
 
   return (
     <a 
-      href={action.url}
-      target="_blank"
+      href={isDemo ? '#' : action.url}
+      target={isDemo ? undefined : "_blank"}
       rel="noopener noreferrer"
+      onClick={handleClick}
       className={`
         group relative flex flex-col items-center justify-center p-4 
         rounded-xl backdrop-blur-md transition-all duration-300
@@ -31,6 +42,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({ action, index }) => {
         bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10
         transform hover:-translate-y-1 hover:shadow-lg hover:shadow-gold/10
         animate-slide-up
+        ${isDemo ? 'cursor-default hover:translate-y-0' : ''}
       `}
       style={{ animationDelay: `${0.2 + (index * 0.1)}s` }}
     >

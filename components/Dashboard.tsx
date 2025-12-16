@@ -1,7 +1,9 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ProfileData, QuickAction, SocialLink, UploadPending } from '../types';
 import Auth from './Auth';
-import { supabase, uploadImage } from '../lib/supabase';
+import PremiumModal from './PremiumModal'; // Importando o Modal
+import { supabase, uploadImage, checkAliasAvailability } from '../lib/supabase';
 import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS } from '../constants';
 import { useRouter } from '../lib/routerContext';
 
@@ -18,6 +20,9 @@ const Dashboard: React.FC = () => {
   // UI States
   const [isSaving, setIsSaving] = useState(false);
   const [pendingUploads, setPendingUploads] = useState<UploadPending[]>([]);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false); // Estado para abrir o modal
+  
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
 
@@ -49,9 +54,21 @@ const Dashboard: React.FC = () => {
 
       if (data && data.content) {
         const content = data.content;
-        if (content.profile) setProfileData(content.profile);
+        
+        let loadedProfile = content.profile || DEFAULT_PROFILE;
+        
+        // Garante que existe uma data de criação para controle do teste
+        if (!loadedProfile.createdAt) {
+            loadedProfile = { ...loadedProfile, createdAt: new Date().toISOString() };
+        }
+        
+        setProfileData(loadedProfile);
+
         if (content.actions) setQuickActions(content.actions);
         if (content.links) setSocialLinks(content.links);
+      } else {
+        // Novo perfil: define data de criação agora
+        setProfileData({ ...DEFAULT_PROFILE, createdAt: new Date().toISOString() });
       }
     } catch (err) {
       console.error(err);
@@ -124,6 +141,17 @@ const Dashboard: React.FC = () => {
     if (!session) return;
     setIsSaving(true);
     try {
+      // 1. Verificar Duplicidade de Alias
+      const alias = profileData.alias;
+      if (!alias || alias.length < 3) {
+          throw new Error("O link do cartão deve ter pelo menos 3 caracteres.");
+      }
+      
+      const isAvailable = await checkAliasAvailability(alias, session.user.id);
+      if (!isAvailable) {
+          throw new Error(`O link "${alias}" já está sendo usado por outra pessoa. Por favor, escolha outro.`);
+      }
+
       let updatedProfile = { ...profileData };
 
       // Upload Images
@@ -167,6 +195,37 @@ const Dashboard: React.FC = () => {
       }
   };
 
+  const handleCopyLink = () => {
+      const alias = profileData.alias || '';
+      const fullUrl = `${window.location.origin}/${alias}`;
+      
+      navigator.clipboard.writeText(fullUrl).then(() => {
+          setCopiedLink(true);
+          setTimeout(() => setCopiedLink(false), 2000);
+      });
+  };
+
+  // --- Helpers para Status da Conta ---
+  const getAccountStatus = () => {
+      if (profileData.isPremium) {
+          return { type: 'premium', label: 'PREMIUM', color: 'bg-gold text-black', icon: 'fa-crown', clickable: false };
+      }
+      
+      const createdAt = new Date(profileData.createdAt || new Date());
+      const now = new Date();
+      const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); // +7 dias
+      const diffTime = trialEnd.getTime() - now.getTime();
+      const daysLeft = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (daysLeft > 0) {
+          return { type: 'trial', label: `${daysLeft} dias de teste`, color: 'bg-blue-600 text-white animate-pulse', icon: 'fa-clock', clickable: true };
+      } else {
+          return { type: 'expired', label: 'Teste Expirado', color: 'bg-red-600 text-white animate-pulse', icon: 'fa-exclamation-triangle', clickable: true };
+      }
+  };
+
+  const status = getAccountStatus();
+
   // --- Render ---
 
   if (!session) {
@@ -190,13 +249,31 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white">
+      {/* Modal de Pagamento */}
+      <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
+
       {/* Header Dashboard */}
       <header className="fixed top-0 w-full bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 z-50 h-16 flex items-center justify-between px-4 lg:px-8">
         <div className="flex items-center gap-3">
              <div className="w-8 h-8 rounded bg-gold flex items-center justify-center font-bold text-black">CP</div>
              <h1 className="font-bold hidden sm:block">Editor de Cartão</h1>
+             
+             {/* Account Status Badge */}
+             <button 
+                onClick={() => status.clickable && setShowPremiumModal(true)}
+                className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold ml-2 ${status.color} ${status.clickable ? 'hover:scale-105 cursor-pointer shadow-lg' : ''} transition-all`}
+             >
+                <i className={`fa-solid ${status.icon}`}></i>
+                {status.label}
+             </button>
         </div>
         <div className="flex items-center gap-3">
+             {!profileData.isPremium && (
+                 <button onClick={() => setShowPremiumModal(true)} className="hidden sm:block text-xs font-bold bg-zinc-800 hover:bg-gold hover:text-black text-gold px-3 py-1.5 rounded-lg border border-gold/30 transition-all mr-2">
+                     <i className="fa-solid fa-rocket mr-1"></i> Fazer Upgrade
+                 </button>
+             )}
+
              <button onClick={viewLiveCard} className="text-sm px-3 py-1.5 rounded-lg border border-zinc-700 hover:bg-zinc-800 transition-colors text-gold">
                 <i className="fa-solid fa-external-link-alt mr-2"></i> Ver Cartão
              </button>
@@ -211,7 +288,7 @@ const Dashboard: React.FC = () => {
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><i className="fa-solid fa-link text-gold"></i> Link do Cartão</h2>
             <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex-1 flex items-center bg-gray-100 dark:bg-black rounded-lg border border-gray-300 dark:border-zinc-700 overflow-hidden">
-                    <span className="px-3 text-gray-500 text-sm border-r border-gray-300 dark:border-zinc-700">{window.location.host}/</span>
+                    <span className="pl-3 pr-1 text-gray-500 text-sm border-r border-transparent">{window.location.host}/</span>
                     <input 
                         type="text" 
                         value={profileData.alias} 
@@ -219,6 +296,18 @@ const Dashboard: React.FC = () => {
                         className="flex-1 bg-transparent p-3 outline-none font-bold text-indigo-500"
                         placeholder="seu-nome"
                     />
+                    {/* Copy Button */}
+                    <button 
+                        onClick={handleCopyLink}
+                        title="Copiar link"
+                        className="px-3 py-3 text-gray-400 hover:text-gold transition-colors border-l border-zinc-800 hover:bg-zinc-900"
+                    >
+                        {copiedLink ? (
+                            <i className="fa-solid fa-check text-green-500"></i>
+                        ) : (
+                            <i className="fa-regular fa-copy"></i>
+                        )}
+                    </button>
                 </div>
                 <button onClick={viewLiveCard} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-3 rounded-lg font-bold transition-colors">
                     Acessar

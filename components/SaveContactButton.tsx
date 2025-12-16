@@ -3,11 +3,14 @@ import { ProfileData } from '../types';
 
 interface SaveContactButtonProps {
   data: ProfileData;
+  isDemo?: boolean;
 }
 
-const SaveContactButton: React.FC<SaveContactButtonProps> = ({ data }) => {
+const SaveContactButton: React.FC<SaveContactButtonProps> = ({ data, isDemo = false }) => {
   
   const handleDownloadVCard = () => {
+    if (isDemo) return;
+
     // Basic vCard 3.0 string generation
     const vCardData = `BEGIN:VCARD
 VERSION:3.0
@@ -31,15 +34,14 @@ END:VCARD`;
     <div className="w-full mt-8 mb-6 px-2 animate-slide-up" style={{ animationDelay: '0.6s' }}>
       <button
         onClick={handleDownloadVCard}
-        className="
+        className={`
           w-full relative overflow-hidden group
           bg-gradient-to-r from-gold to-[#b8952b]
           text-black font-bold py-4 rounded-xl
           shadow-lg shadow-gold/20
           transform transition-all duration-300
-          hover:scale-[1.02] hover:shadow-gold/40
-          active:scale-[0.98]
-        "
+          ${!isDemo ? 'hover:scale-[1.02] hover:shadow-gold/40 active:scale-[0.98]' : 'cursor-default'}
+        `}
       >
         <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></span>
         <div className="flex items-center justify-center gap-3 relative z-10">

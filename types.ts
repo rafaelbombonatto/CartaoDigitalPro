@@ -1,3 +1,4 @@
+
 export interface SocialLink {
   icon: string;
   url: string;
@@ -25,6 +26,9 @@ export interface ProfileData {
   avatarUrl: string;
   backgroundUrl: string;
   themeColor: string;
+  // Novos campos para controle de assinatura
+  createdAt?: string; // Data ISO string
+  isPremium?: boolean;
 }
 
 // Interface auxiliar para gerenciar uploads pendentes no AdminPanel
