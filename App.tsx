@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { RouterProvider, useRouter } from './lib/routerContext';
 import LandingPage from './components/LandingPage';
@@ -8,22 +9,26 @@ import PublicCard from './components/PublicCard';
 const AppRoutes: React.FC = () => {
   const { path } = useRouter();
 
+  // Normaliza a rota removendo barra final se existir (ex: /dashboard/ vira /dashboard)
+  // Isso evita erros de roteamento
+  const normalizedPath = path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path;
+
   // Rota: Landing Page (Home)
-  if (path === '/' || path === '/index.html') {
+  if (normalizedPath === '/' || normalizedPath === '/index.html') {
     return <LandingPage />;
   }
   
   // Rota: Dashboard (Editor)
-  if (path === '/dashboard') {
+  if (normalizedPath === '/dashboard') {
     return <Dashboard />;
   }
 
   // Rota: Cartão Público (Slug dinâmico)
   // Se não for nenhuma das rotas acima e tiver conteúdo, assumimos que é um slug (ex: /joao)
   // Filtramos 'index.html' caso apareça no pathname por configuração do servidor
-  if (path.length > 1 && !path.includes('index.html')) {
+  if (normalizedPath.length > 1 && !normalizedPath.includes('index.html')) {
     // Remove a barra inicial '/' para pegar apenas o nome
-    const slug = path.substring(1); 
+    const slug = normalizedPath.substring(1); 
     return <PublicCard slug={slug} />;
   }
 
