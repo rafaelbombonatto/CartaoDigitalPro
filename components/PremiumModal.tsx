@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface PremiumModalProps {
   isOpen: boolean;
@@ -8,6 +8,13 @@ interface PremiumModalProps {
 
 const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isLocalhost, setIsLocalhost] = useState(false);
+
+  useEffect(() => {
+    // Verifica se está rodando localmente para habilitar ferramentas de dev
+    const hostname = window.location.hostname;
+    setIsLocalhost(hostname === 'localhost' || hostname === '127.0.0.1');
+  }, []);
 
   if (!isOpen) return null;
 
@@ -26,7 +33,6 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
   };
 
   // --- CONFIGURAÇÃO DO MERCADO PAGO ---
-  // Tenta pegar do ambiente, se não existir, retorna undefined
   const PAYMENT_LINK = getEnv('VITE_MERCADO_PAGO_LINK');
   
   const handleCheckout = () => {
@@ -42,6 +48,14 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
       setTimeout(() => {
           window.location.href = PAYMENT_LINK;
       }, 1000);
+  };
+
+  // Simula o retorno positivo do Mercado Pago (Apenas Dev)
+  const handleDevSimulation = () => {
+      if (confirm('Simular pagamento aprovado e retornar ao Dashboard?')) {
+          // Redireciona para a mesma URL que o Mercado Pago redirecionaria
+          window.location.href = `${window.location.origin}/dashboard?status=approved&payment_id=dev_test_${Date.now()}`;
+      }
   };
 
   return (
@@ -121,7 +135,7 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer Action */}
-        <div className="p-4 bg-zinc-900 border-t border-white/5">
+        <div className="p-4 bg-zinc-900 border-t border-white/5 space-y-3">
             <button
                 onClick={handleCheckout}
                 disabled={isLoading}
@@ -138,7 +152,18 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
                     </>
                 )}
             </button>
-            <p className="text-center text-[10px] text-gray-600 mt-3">
+            
+            {/* BOTÃO DEV MODE - Só aparece em localhost */}
+            {isLocalhost && (
+                <button 
+                    onClick={handleDevSimulation}
+                    className="w-full bg-zinc-800 text-gray-400 hover:text-white hover:bg-zinc-700 text-xs font-mono py-2 rounded-lg border border-dashed border-zinc-600 transition-colors"
+                >
+                    [DEV MODE] Simular Pagamento Aprovado
+                </button>
+            )}
+
+            <p className="text-center text-[10px] text-gray-600">
                 Ambiente criptografado. Liberação imediata após aprovação.
             </p>
         </div>
