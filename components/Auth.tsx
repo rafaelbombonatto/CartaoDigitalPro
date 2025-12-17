@@ -1,7 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useRouter } from '../lib/routerContext';
 
 const Auth: React.FC = () => {
+  const { navigate } = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,6 +51,8 @@ const Auth: React.FC = () => {
           password,
         });
         if (error) throw error;
+        // Força a navegação para o dashboard após login bem sucedido
+        navigate('/dashboard');
       }
     } catch (error: any) {
       setMessage({ text: error.message || 'Ocorreu um erro.', type: 'error' });
@@ -63,7 +68,9 @@ const Auth: React.FC = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          // AQUI ESTAVA O PROBLEMA DO LOGIN:
+          // Antes redirecionava para a origem (Home), agora força /dashboard
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
       if (error) throw error;
