@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRouter } from '../lib/routerContext';
 
@@ -10,15 +10,6 @@ const Auth: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'error' | 'success' } | null>(null);
-  const [showHelp, setShowHelp] = useState(false);
-  const [currentOrigin, setCurrentOrigin] = useState('');
-  const [isLocalhost, setIsLocalhost] = useState(false);
-
-  useEffect(() => {
-    const origin = window.location.origin;
-    setCurrentOrigin(origin);
-    setIsLocalhost(origin.includes('localhost') || origin.includes('127.0.0.1'));
-  }, []);
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -68,8 +59,6 @@ const Auth: React.FC = () => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // AQUI ESTAVA O PROBLEMA DO LOGIN:
-          // Antes redirecionava para a origem (Home), agora força /dashboard
           redirectTo: `${window.location.origin}/dashboard`,
         },
       });
@@ -123,61 +112,6 @@ const Auth: React.FC = () => {
               </>
             )}
           </button>
-
-           <button 
-            onClick={() => setShowHelp(!showHelp)}
-            className="text-xs text-red-400 font-bold underline hover:text-red-500 transition-colors"
-           >
-             {showHelp ? 'Fechar Ajuda' : 'Deu erro 403? Clique aqui.'}
-           </button>
-           
-           {showHelp && (
-             <div className="text-left bg-zinc-100 dark:bg-zinc-800 p-4 rounded-lg border border-red-200 dark:border-red-900/50 text-xs text-gray-600 dark:text-gray-300 space-y-4 shadow-inner max-h-96 overflow-y-auto">
-               <h3 className="font-bold text-red-500 dark:text-red-400 border-b border-gray-300 pb-2">DIAGNÓSTICO DE ERRO 403</h3>
-               
-               <div className="space-y-4">
-                 
-                 <div className="p-3 bg-orange-100 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded">
-                    <p className="font-bold text-orange-800 dark:text-orange-400 mb-1">
-                        <i className="fa-solid fa-users"></i> VOCÊ ADICIONOU SEU E-MAIL?
-                    </p>
-                    <p>O erro 403 geralmente significa que seu app está em modo "Testing" no Google.</p>
-                    <ol className="list-decimal pl-4 mt-2 space-y-1 text-[10px]">
-                        <li>Vá no <a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" className="underline">Google Cloud Console &gt; OAuth consent screen</a>.</li>
-                        <li>Verifique se o "Publishing status" é <strong>Testing</strong>.</li>
-                        <li>Se for, desça até <strong>Test users</strong>.</li>
-                        <li>Clique em <strong>+ ADD USERS</strong> e adicione o seu email.</li>
-                        <li>Sem isso, o Google bloqueia o login.</li>
-                    </ol>
-                 </div>
-
-                 {!isLocalhost && (
-                    <div className="p-3 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded">
-                        <p className="font-bold text-purple-800 dark:text-purple-400 mb-1">
-                            <i className="fa-solid fa-cloud"></i> VOCÊ ESTÁ EM UM PREVIEW
-                        </p>
-                        <p>Você não está no Localhost. O Supabase não conhece este endereço temporário.</p>
-                        <p className="mt-2 font-semibold">Adicione isto no Supabase (Redirect URLs):</p>
-                        <code className="block mt-1 bg-black/10 dark:bg-black/30 p-1 rounded font-mono break-all select-all text-blue-600 dark:text-blue-400 font-bold mb-2">
-                           {currentOrigin}/**
-                        </code>
-                        <p>Se a URL mudar sempre, tente usar um coringa:</p>
-                        <code className="block mt-1 bg-black/10 dark:bg-black/30 p-1 rounded font-mono break-all select-all text-gray-500 dark:text-gray-400">
-                           https://*.scf.usercontent.goog/**
-                        </code>
-                    </div>
-                 )}
-
-                 {isLocalhost && (
-                     <div className="p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded">
-                        <p className="font-bold text-blue-800 dark:text-blue-400 mb-1">LOCALHOST DETECTADO</p>
-                        <p>Certifique-se de que <code>http://localhost:5173/**</code> está na lista de Redirect URLs no Supabase.</p>
-                     </div>
-                 )}
-
-               </div>
-             </div>
-           )}
 
           <div className="relative flex py-2 items-center">
             <div className="flex-grow border-t border-gray-300 dark:border-zinc-700"></div>
