@@ -1,11 +1,36 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Configuração do Supabase com as credenciais fornecidas
-const supabaseUrl = 'https://hoaqohaawgvgzoxsfzyt.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvYXFvaGFhd2d2Z3pveHNmenl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3ODUzMjIsImV4cCI6MjA4MTM2MTMyMn0.nuLPM_6F-Pk9zknTuqbqu3Egl7HZSaLpM23hsm-BYbg';
+// Função auxiliar para acesso seguro a variáveis de ambiente
+const getEnv = (key: string) => {
+  try {
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      return import.meta.env[key];
+    }
+  } catch (e) {
+    console.warn(`Erro ao ler variável de ambiente ${key}`, e);
+  }
+  return undefined;
+};
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+// Fallbacks para garantir funcionamento em ambientes de preview/dev sem build do Vite
+const SUPABASE_URL_FALLBACK = "https://hoaqohaawgvgzoxsfzyt.supabase.co";
+const SUPABASE_KEY_FALLBACK = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhvYXFvaGFhd2d2Z3pveHNmenl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3ODUzMjIsImV4cCI6MjA4MTM2MTMyMn0.nuLPM_6F-Pk9zknTuqbqu3Egl7HZSaLpM23hsm-BYbg";
+
+// Tenta pegar do ambiente (Netlify), senão usa o fallback
+const supabaseUrl = getEnv('VITE_SUPABASE_URL') || SUPABASE_URL_FALLBACK;
+const supabaseKey = getEnv('VITE_SUPABASE_ANON_KEY') || SUPABASE_KEY_FALLBACK;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn('ATENÇÃO: Credenciais do Supabase não encontradas. Verifique suas variáveis de ambiente.');
+}
+
+export const supabase = createClient(
+  supabaseUrl || '', 
+  supabaseKey || ''
+);
 
 /*
   --- INSTRUÇÕES CRÍTICAS PARA SQL EDITOR DO SUPABASE ---

@@ -11,15 +11,33 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  // Função auxiliar para acesso seguro a variáveis de ambiente
+  const getEnv = (key: string) => {
+    try {
+      // @ts-ignore
+      if (typeof import.meta !== 'undefined' && import.meta.env) {
+        // @ts-ignore
+        return import.meta.env[key];
+      }
+    } catch (e) {
+      // ignore
+    }
+    return undefined;
+  };
+
   // --- CONFIGURAÇÃO DO MERCADO PAGO ---
-  // 1. Crie um Link de Pagamento no painel do Mercado Pago.
-  // 2. Configure a URL de retorno ("Back URL") no MP para: https://seu-app.com/dashboard
-  // 3. Cole o link gerado abaixo.
-  const PAYMENT_LINK = "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=SEU_ID_DE_PREFERENCIA_AQUI"; 
+  // Tenta pegar do ambiente, se não existir, retorna undefined
+  const PAYMENT_LINK = getEnv('VITE_MERCADO_PAGO_LINK');
   
   const handleCheckout = () => {
       setIsLoading(true);
       
+      if (!PAYMENT_LINK || PAYMENT_LINK === "COLE_AQUI_SEU_LINK_DO_MERCADO_PAGO") {
+          alert("Link de Pagamento não configurado. Adicione a variável VITE_MERCADO_PAGO_LINK no Netlify.");
+          setIsLoading(false);
+          return;
+      }
+
       // Simula um pequeno delay para feedback visual antes de redirecionar
       setTimeout(() => {
           window.location.href = PAYMENT_LINK;
