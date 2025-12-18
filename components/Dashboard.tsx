@@ -125,15 +125,30 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const downloadQRCode = () => {
+  const downloadQRCode = async () => {
     if (!profileData.isPremium) return;
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`;
-    const link = document.createElement('a');
-    link.href = qrUrl;
-    link.download = `qrcode-${profileData.alias}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`;
+        
+        // Buscamos a imagem como blob para forçar o download direto
+        const response = await fetch(qrUrl);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `qrcode-${profileData.alias}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Limpeza de memória
+        window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+        console.error("Erro ao baixar QR Code:", error);
+        // Fallback simples caso o fetch falhe por CORS (embora api.qrserver geralmente permita)
+        window.open(`https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`, '_blank');
+    }
   };
 
   const getTrialDaysLeft = () => {
@@ -211,7 +226,7 @@ const Dashboard: React.FC = () => {
              </div>
          )}
 
-         {/* Endereço Digital - Correção de Layout Mobile (Sem Absolute) */}
+         {/* Endereço Digital */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50">
             <h2 className="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest ml-1">Endereço Digital</h2>
             <div className="flex items-center gap-1 bg-white dark:bg-black rounded-2xl border border-gray-200 dark:border-zinc-800 p-1 group focus-within:border-gold transition-all shadow-sm">
@@ -236,7 +251,7 @@ const Dashboard: React.FC = () => {
             </div>
          </section>
 
-         {/* Seção de QR Code com Restrição Premium */}
+         {/* Seção de QR Code */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 flex flex-col items-center relative overflow-hidden">
             <h2 className="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest self-start ml-1">Seu QR Code</h2>
             
@@ -262,7 +277,7 @@ const Dashboard: React.FC = () => {
                     onClick={downloadQRCode}
                     className="flex items-center gap-2 text-[10px] font-black text-gold hover:text-gold-light transition-colors uppercase tracking-widest"
                 >
-                    <i className="fa-solid fa-download"></i> Baixar QR Code
+                    <i className="fa-solid fa-download"></i> Baixar Arquivo PNG
                 </button>
             ) : (
                 <button 
@@ -363,9 +378,34 @@ const Dashboard: React.FC = () => {
                  ))}
              </div>
          </section>
+
+         {/* NOVO: Redes Sociais Restauradas */}
+         <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 shadow-sm">
+             <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Redes Sociais</h2>
+             <div className="space-y-4">
+                 {socialLinks.map((link, idx) => (
+                     <div key={idx} className="flex items-center gap-3 bg-gray-50 dark:bg-black/40 p-3 rounded-xl border border-gray-100 dark:border-zinc-800 focus-within:border-gold transition-all">
+                         <div className="w-10 h-10 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-gold text-lg"><i className={link.icon}></i></div>
+                         <div className="flex-1">
+                             <input 
+                                type="text" 
+                                placeholder={link.label}
+                                value={link.url === '#' ? '' : link.url} 
+                                onChange={(e) => {
+                                    const newLinks = [...socialLinks];
+                                    newLinks[idx].url = e.target.value;
+                                    setSocialLinks(newLinks);
+                                }}
+                                className="w-full bg-transparent outline-none text-xs font-bold text-gray-800 dark:text-white" 
+                             />
+                         </div>
+                     </div>
+                 ))}
+             </div>
+         </section>
       </div>
 
-      {/* Botão Salvar - Refatorado para Mobile */}
+      {/* Botão Salvar */}
       <div className="fixed bottom-0 w-full bg-white/80 dark:bg-black/80 backdrop-blur-xl p-4 sm:p-6 border-t border-gray-100 dark:border-zinc-800/50 z-[60] flex justify-center pb-safe">
         <button 
             onClick={handleSave} 
