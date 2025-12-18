@@ -54,23 +54,31 @@ const Dashboard: React.FC = () => {
         .single();
 
       if (data) {
-          let currentProfile = data.content?.profile || DEFAULT_PROFILE;
+          // Extraímos os dados do content
+          const content = data.content || {};
+          let profile = content.profile || { ...DEFAULT_PROFILE };
           
-          // Garantia de integridade: se vier do banco sem isPremium, assume false
-          if (currentProfile.isPremium === undefined) {
-              currentProfile.isPremium = false;
+          // --- LÓGICA DE MIGRAÇÃO (Para registros antigos sem os campos) ---
+          
+          // 1. Garante que isPremium seja boolean (evita null/undefined)
+          if (typeof profile.isPremium !== 'boolean') {
+              profile.isPremium = false;
           }
 
-          if (!currentProfile.createdAt) {
-              currentProfile.createdAt = data.created_at || new Date().toISOString();
+          // 2. Garante que createdAt exista (usa a data do registro na tabela como fallback)
+          if (!profile.createdAt) {
+              profile.createdAt = data.created_at || new Date().toISOString();
           }
+
+          // 3. Garante que alias esteja sincronizado com a coluna da tabela
+          profile.alias = data.alias || profile.alias;
           
-          setProfileData(currentProfile);
-          if (data.content?.actions) setQuickActions(data.content.actions);
-          if (data.content?.links) setSocialLinks(data.content.links);
+          setProfileData(profile);
+          if (content.actions) setQuickActions(content.actions);
+          if (content.links) setSocialLinks(content.links);
       } else {
-          // Novo usuário: Garante que o estado inicial tenha isPremium: false
-          setProfileData({ ...DEFAULT_PROFILE, isPremium: false });
+          // Novo usuário: Usa os padrões definidos nas constantes
+          setProfileData({ ...DEFAULT_PROFILE, isPremium: false, createdAt: new Date().toISOString() });
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -97,9 +105,9 @@ const Dashboard: React.FC = () => {
       const isAvailable = await checkAliasAvailability(alias, session.user.id);
       if (!isAvailable) throw new Error("Este endereço já está em uso por outro usuário.");
 
+      // Preparação do objeto de salvamento garantindo todos os campos
       let updatedProfile = { 
         ...profileData,
-        // Garante que o campo isPremium sempre seja enviado (true ou false)
         isPremium: profileData.isPremium ?? false,
         createdAt: profileData.createdAt || new Date().toISOString() 
       };
@@ -123,7 +131,7 @@ const Dashboard: React.FC = () => {
       if (error) throw error;
       setProfileData(updatedProfile);
       setPendingUploads([]);
-      alert('Alterações publicadas com sucesso!');
+      alert('Seu perfil foi atualizado com sucesso!');
     } catch (err: any) {
       alert(err.message);
     } finally {

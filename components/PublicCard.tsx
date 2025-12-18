@@ -33,7 +33,6 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
   useEffect(() => {
     if (slug) {
         if (slug === 'exemplo' || slug === 'demo') {
-            // Carrega dados de exemplo instantaneamente
             setIsDemo(true);
             setLoading(false);
         } else {
@@ -45,14 +44,13 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
     }
   }, [slug]);
 
-  // --- Injeção de CSS Dinâmico ---
   useEffect(() => {
     const root = document.documentElement;
-    const color = profileData.themeColor;
+    const color = profileData.themeColor || "#D4AF37";
     root.style.setProperty('--theme-color', color);
     root.style.setProperty('--theme-color-dark', adjustColor(color, -40)); 
     root.style.setProperty('--theme-color-light', adjustColor(color, 40));
-    document.documentElement.classList.add('dark'); // Force dark mode for card view usually looks better
+    document.documentElement.classList.add('dark');
   }, [profileData.themeColor]);
 
   const loadProfile = async (alias: string) => {
@@ -66,13 +64,21 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             const content = data.content;
             if (content.profile) {
                 const profile = content.profile as ProfileData;
-                setProfileData(profile);
+                
+                // --- FALLBACKS PARA REGISTROS ANTIGOS ---
+                const finalProfile = {
+                    ...profile,
+                    isPremium: profile.isPremium ?? false,
+                    createdAt: profile.createdAt || data.created_at || new Date().toISOString()
+                };
+
+                setProfileData(finalProfile);
                 
                 // Verificar Validade do Teste Grátis
-                if (!profile.isPremium) {
-                    const createdAt = new Date(profile.createdAt || new Date().toISOString()); // Se não tiver data, assume hoje (fallback)
+                if (!finalProfile.isPremium) {
+                    const createdAt = new Date(finalProfile.createdAt);
                     const now = new Date();
-                    const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 dias
+                    const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); 
                     
                     if (now > trialEnd) {
                         setIsExpired(true);
@@ -123,11 +129,9 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       );
   }
 
-  // --- Bloqueio por Expiração ---
   if (isExpired) {
       return (
           <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center relative overflow-hidden">
-             {/* Background blur effect */}
              <div className="absolute inset-0 bg-red-900/20 blur-3xl"></div>
              
              <div className="relative z-10 max-w-md w-full bg-zinc-900/80 border border-red-500/30 p-8 rounded-2xl backdrop-blur-xl shadow-2xl">
@@ -145,7 +149,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
                 >
                     Acessar Painel
                 </button>
-                <p className="text-xs text-gray-600">Este perfil foi criado há mais de 7 dias.</p>
+                <p className="text-xs text-gray-600">Período de teste: 7 dias corridos.</p>
              </div>
           </div>
       );
@@ -160,7 +164,6 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             <div className="fixed top-0 left-0 w-full bg-indigo-600/90 backdrop-blur-sm text-white text-center text-[10px] font-bold py-1 z-50 tracking-widest uppercase">
                 Modo de Demonstração
             </div>
-            {/* Botão Voltar ao Início */}
             <button 
                 onClick={() => navigate('/')}
                 className="fixed top-8 left-4 z-50 group flex items-center gap-2 px-4 py-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full hover:bg-white/10 transition-all text-white text-sm font-medium"
@@ -199,7 +202,6 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
           <Footer links={socialLinks} isDemo={isDemo} />
         </div>
         
-        {/* Branding discreto */}
         <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="mt-8 text-[10px] text-white/30 uppercase tracking-widest hover:text-gold transition-colors cursor-pointer">
             Criado com Cartão Digital Pro
         </a>
