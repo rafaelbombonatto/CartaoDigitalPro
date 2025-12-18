@@ -1,9 +1,6 @@
 
 import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
 
-// Inicialização segura
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 // Definição da Ferramenta de Pagamento (Function Calling)
 export const checkoutTool: FunctionDeclaration = {
   name: 'criar_preferencia_mercadopago',
@@ -33,6 +30,8 @@ export const checkoutTool: FunctionDeclaration = {
 };
 
 export const getAiAssistantResponse = async (userMessage: string, userId: string) => {
+  // Inicializamos a instância bem no momento do uso para garantir que o process.env.API_KEY esteja disponível
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const model = 'gemini-3-flash-preview';
   
   const systemInstruction = `Você é o Assistente Virtual do Cartão Digital Pro. 

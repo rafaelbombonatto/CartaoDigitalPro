@@ -9,10 +9,14 @@ import CheckoutStatus from './components/CheckoutStatus';
 const AppRoutes: React.FC = () => {
   const { path } = useRouter();
 
-  const normalizedPath = path.endsWith('/') && path.length > 1 ? path.slice(0, -1) : path;
+  // Remove trailing slashes e query strings para comparação de rotas
+  const pathWithoutQuery = path.split('?')[0];
+  const normalizedPath = pathWithoutQuery.endsWith('/') && pathWithoutQuery.length > 1 
+    ? pathWithoutQuery.slice(0, -1) 
+    : pathWithoutQuery;
 
   // Rota: Landing Page (Home)
-  if (normalizedPath === '/' || normalizedPath === '/index.html') {
+  if (normalizedPath === '/' || normalizedPath === '' || normalizedPath === '/index.html') {
     return <LandingPage />;
   }
   
@@ -33,8 +37,9 @@ const AppRoutes: React.FC = () => {
   }
 
   // Rota: Cartão Público (Slug dinâmico)
-  if (normalizedPath.length > 1 && !normalizedPath.includes('index.html')) {
-    const slug = normalizedPath.substring(1); 
+  // Ignora se o slug for vazio ou for um arquivo de sistema
+  if (normalizedPath.length > 1 && !normalizedPath.includes('.')) {
+    const slug = normalizedPath.startsWith('/') ? normalizedPath.substring(1) : normalizedPath; 
     return <PublicCard slug={slug} />;
   }
 
