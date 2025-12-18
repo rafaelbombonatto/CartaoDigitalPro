@@ -1,3 +1,4 @@
+
 import { ProfileData, QuickAction, SocialLink } from './types';
 
 export const DEFAULT_PROFILE: ProfileData = {
@@ -11,7 +12,8 @@ export const DEFAULT_PROFILE: ProfileData = {
   bio: "A chave para o seu novo lar está aqui. Excelência e exclusividade em cada negociação.",
   avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=256&h=256&auto=format&fit=crop",
   backgroundUrl: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1920&auto=format&fit=crop",
-  themeColor: "#D4AF37" // Default Gold
+  themeColor: "#D4AF37", // Default Gold
+  isPremium: false // Definido como false por padrão para novos usuários
 };
 
 export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [

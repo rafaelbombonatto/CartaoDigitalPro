@@ -53,22 +53,32 @@ const Dashboard: React.FC = () => {
         .eq('id', userId)
         .single();
 
-      let currentProfile = data?.content?.profile || DEFAULT_PROFILE;
-      let currentActions = data?.content?.actions || DEFAULT_QUICK_ACTIONS;
-      let currentSocial = data?.content?.links || DEFAULT_SOCIAL_LINKS;
+      if (data) {
+          let currentProfile = data.content?.profile || DEFAULT_PROFILE;
+          
+          // Garantia de integridade: se vier do banco sem isPremium, assume false
+          if (currentProfile.isPremium === undefined) {
+              currentProfile.isPremium = false;
+          }
 
-      // Detecta upgrade concluído via URL
+          if (!currentProfile.createdAt) {
+              currentProfile.createdAt = data.created_at || new Date().toISOString();
+          }
+          
+          setProfileData(currentProfile);
+          if (data.content?.actions) setQuickActions(data.content.actions);
+          if (data.content?.links) setSocialLinks(data.content.links);
+      } else {
+          // Novo usuário: Garante que o estado inicial tenha isPremium: false
+          setProfileData({ ...DEFAULT_PROFILE, isPremium: false });
+      }
+
       const params = new URLSearchParams(window.location.search);
       if (params.get('upgrade') === 'success') {
           setShowSuccessToast(true);
-          // Limpa a URL para não repetir o alerta ao recarregar
           window.history.replaceState({}, document.title, window.location.pathname);
           setTimeout(() => setShowSuccessToast(false), 5000);
       }
-
-      setProfileData(currentProfile);
-      setQuickActions(currentActions);
-      setSocialLinks(currentSocial);
       
     } catch (err) {
       console.error("Erro ao carregar perfil:", err);
@@ -87,7 +97,13 @@ const Dashboard: React.FC = () => {
       const isAvailable = await checkAliasAvailability(alias, session.user.id);
       if (!isAvailable) throw new Error("Este endereço já está em uso por outro usuário.");
 
-      let updatedProfile = { ...profileData };
+      let updatedProfile = { 
+        ...profileData,
+        // Garante que o campo isPremium sempre seja enviado (true ou false)
+        isPremium: profileData.isPremium ?? false,
+        createdAt: profileData.createdAt || new Date().toISOString() 
+      };
+
       for (const upload of pendingUploads) {
         const publicUrl = await uploadImage(upload.file, session.user.id);
         if (publicUrl) updatedProfile = { ...updatedProfile, [upload.field]: publicUrl };
@@ -97,7 +113,11 @@ const Dashboard: React.FC = () => {
           id: session.user.id,
           alias: updatedProfile.alias,
           updated_at: new Date(),
-          content: { profile: updatedProfile, actions: quickActions, links: socialLinks }
+          content: { 
+            profile: updatedProfile, 
+            actions: quickActions, 
+            links: socialLinks 
+          }
       });
 
       if (error) throw error;
@@ -111,9 +131,20 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const getTrialDaysLeft = () => {
+    if (profileData.isPremium) return null;
+    const created = new Date(profileData.createdAt || new Date().toISOString());
+    const expires = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const diff = expires.getTime() - new Date().getTime();
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+    return days > 0 ? days : 0;
+  };
+
+  const trialDays = getTrialDaysLeft();
+
   const status = profileData.isPremium 
     ? { label: 'PRO VITALÍCIO', color: 'bg-gold text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]', icon: 'fa-crown' }
-    : { label: 'VERSÃO FREE', color: 'bg-zinc-800 text-gold border border-gold/30', icon: 'fa-star' };
+    : { label: `TESTE: ${trialDays} DIAS`, color: 'bg-zinc-800 text-gold border border-gold/30', icon: 'fa-clock' };
 
   if (!session) return <div className="min-h-screen bg-black flex items-center justify-center p-4"><Auth /></div>;
   if (loadingProfile) return (
@@ -128,7 +159,6 @@ const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white pb-32">
       
-      {/* Toast de Sucesso */}
       {showSuccessToast && (
           <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] w-full max-w-xs px-4">
              <div className="bg-green-600 text-white p-4 rounded-2xl shadow-2xl animate-slide-up flex items-center gap-4 border border-green-400">
@@ -167,23 +197,22 @@ const Dashboard: React.FC = () => {
       </header>
 
       <div className="pt-24 px-4 max-w-2xl mx-auto space-y-8">
-         {/* Alerta de Verificação Pendente (Somente se não for premium) */}
          {!profileData.isPremium && (
-             <div className="bg-gradient-to-r from-indigo-600/20 to-indigo-600/5 border border-indigo-500/30 p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
-                 <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400">
-                        <i className="fa-solid fa-circle-info"></i>
+             <div className="bg-gradient-to-r from-gold/20 to-gold/5 border border-gold/30 p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                 <div className="flex items-center gap-4 text-left">
+                     <div className="w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center text-gold">
+                        <i className="fa-solid fa-bolt"></i>
                      </div>
                      <div>
-                        <p className="text-[11px] font-bold text-indigo-300 uppercase tracking-wider">Atenção</p>
-                        <p className="text-xs text-gray-400">Pagou e o perfil não liberou? Clique no botão ao lado.</p>
+                        <p className="text-[11px] font-bold text-gold uppercase tracking-wider">Modo Demonstração</p>
+                        <p className="text-xs text-gray-400">Seu perfil será bloqueado em {trialDays} dias.</p>
                      </div>
                  </div>
                  <button 
                     onClick={() => setShowPremiumModal(true)}
-                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black px-6 py-3 rounded-xl transition-all shadow-lg shadow-indigo-600/20"
+                    className="w-full sm:w-auto bg-gold hover:bg-yellow-400 text-black text-[10px] font-black px-6 py-3 rounded-xl transition-all shadow-lg shadow-gold/20"
                 >
-                    VERIFICAR PAGAMENTO
+                    REMOVER LIMITES
                 </button>
              </div>
          )}

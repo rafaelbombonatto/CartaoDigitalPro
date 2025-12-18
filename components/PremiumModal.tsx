@@ -14,7 +14,6 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
   const [paymentId, setPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Captura o ID do pagamento caso o usuário tenha sido redirecionado de volta
     const params = new URLSearchParams(window.location.search);
     const id = params.get('payment_id') || params.get('collection_id') || params.get('preference_id');
     const status = params.get('status');
@@ -46,19 +45,18 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
         return;
       }
 
-      // Chamada para a Edge Function que você criou no Supabase
       const res = await fetch(
         `${SUPABASE_URL}/functions/v1/create-checkout`,
         {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
             user_id: session.user.id,
             plan: 'vitalicio',
-            amount_cents: 4990 // R$ 49,90
+            amount_cents: 4990 
           })
         }
       );
@@ -66,7 +64,6 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
       const data = await res.json();
 
       if (res.ok && data.init_point) {
-        // Redireciona para o checkout oficial do Mercado Pago
         window.location.href = data.init_point;
       } else {
         throw new Error(data.error || "Erro ao gerar link de pagamento.");
@@ -92,7 +89,6 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error("Sua sessão expirou. Por favor, entre novamente.");
 
-        // Busca o perfil para atualizar
         const { data: profile } = await supabase
             .from('profiles')
             .select('*')
@@ -101,13 +97,15 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
 
         if (!profile) throw new Error("Perfil não encontrado.");
 
+        // IMPORTANTE: Preserva o createdAt existente para não resetar o histórico do usuário
         const updatedContent = { 
             ...profile.content, 
             profile: { 
                 ...profile.content.profile, 
                 isPremium: true,
                 mp_payment_id: targetId,
-                premium_since: new Date().toISOString()
+                premium_since: new Date().toISOString(),
+                createdAt: profile.content.profile?.createdAt || profile.created_at || new Date().toISOString()
             } 
         };
 
@@ -119,8 +117,6 @@ const PremiumModal: React.FC<PremiumModalProps> = ({ isOpen, onClose }) => {
         });
 
         if (updateError) throw updateError;
-
-        // Redireciona com parâmetro de sucesso para o Dashboard
         window.location.href = '/dashboard?upgrade=success';
     } catch (err: any) {
         alert("Erro ao ativar sua conta: " + err.message);
