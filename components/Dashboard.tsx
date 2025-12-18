@@ -54,30 +54,17 @@ const Dashboard: React.FC = () => {
         .single();
 
       if (data) {
-          // Extraímos os dados do content
           const content = data.content || {};
           let profile = content.profile || { ...DEFAULT_PROFILE };
           
-          // --- LÓGICA DE MIGRAÇÃO (Para registros antigos sem os campos) ---
-          
-          // 1. Garante que isPremium seja boolean (evita null/undefined)
-          if (typeof profile.isPremium !== 'boolean') {
-              profile.isPremium = false;
-          }
-
-          // 2. Garante que createdAt exista (usa a data do registro na tabela como fallback)
-          if (!profile.createdAt) {
-              profile.createdAt = data.created_at || new Date().toISOString();
-          }
-
-          // 3. Garante que alias esteja sincronizado com a coluna da tabela
+          if (typeof profile.isPremium !== 'boolean') profile.isPremium = false;
+          if (!profile.createdAt) profile.createdAt = data.created_at || new Date().toISOString();
           profile.alias = data.alias || profile.alias;
           
           setProfileData(profile);
           if (content.actions) setQuickActions(content.actions);
           if (content.links) setSocialLinks(content.links);
       } else {
-          // Novo usuário: Usa os padrões definidos nas constantes
           setProfileData({ ...DEFAULT_PROFILE, isPremium: false, createdAt: new Date().toISOString() });
       }
 
@@ -105,7 +92,6 @@ const Dashboard: React.FC = () => {
       const isAvailable = await checkAliasAvailability(alias, session.user.id);
       if (!isAvailable) throw new Error("Este endereço já está em uso por outro usuário.");
 
-      // Preparação do objeto de salvamento garantindo todos os campos
       let updatedProfile = { 
         ...profileData,
         isPremium: profileData.isPremium ?? false,
@@ -139,6 +125,17 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const downloadQRCode = () => {
+    if (!profileData.isPremium) return;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`;
+    const link = document.createElement('a');
+    link.href = qrUrl;
+    link.download = `qrcode-${profileData.alias}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getTrialDaysLeft = () => {
     if (profileData.isPremium) return null;
     const created = new Date(profileData.createdAt || new Date().toISOString());
@@ -151,7 +148,7 @@ const Dashboard: React.FC = () => {
   const trialDays = getTrialDaysLeft();
 
   const status = profileData.isPremium 
-    ? { label: 'PRO VITALÍCIO', color: 'bg-gold text-black shadow-[0_0_15px_rgba(212,175,55,0.4)]', icon: 'fa-crown' }
+    ? { label: 'PRO VITALÍCIO', color: 'bg-gold text-black shadow-lg', icon: 'fa-crown' }
     : { label: `TESTE: ${trialDays} DIAS`, color: 'bg-zinc-800 text-gold border border-gold/30', icon: 'fa-clock' };
 
   if (!session) return <div className="min-h-screen bg-black flex items-center justify-center p-4"><Auth /></div>;
@@ -159,110 +156,138 @@ const Dashboard: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="flex flex-col items-center gap-4">
             <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-gold font-bold text-xs tracking-widest animate-pulse">CARREGANDO PAINEL...</p>
+            <p className="text-gold font-bold text-[10px] tracking-widest animate-pulse uppercase">Sincronizando Dados...</p>
         </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white pb-32">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white pb-40 transition-colors duration-500">
       
       {showSuccessToast && (
-          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] w-full max-w-xs px-4">
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] w-full max-w-xs px-4">
              <div className="bg-green-600 text-white p-4 rounded-2xl shadow-2xl animate-slide-up flex items-center gap-4 border border-green-400">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                    <i className="fa-solid fa-check text-xl"></i>
-                </div>
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0"><i className="fa-solid fa-check text-xl"></i></div>
                 <div>
                     <h3 className="font-bold text-sm">Upgrade Ativo!</h3>
                     <p className="text-[10px] opacity-90">Sua conta agora é Premium Vitalícia.</p>
                 </div>
-                <button onClick={() => setShowSuccessToast(false)} className="ml-auto text-white/50 hover:text-white">
-                    <i className="fa-solid fa-times"></i>
-                </button>
+                <button onClick={() => setShowSuccessToast(false)} className="ml-auto text-white/50"><i className="fa-solid fa-times"></i></button>
              </div>
           </div>
       )}
 
       <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
 
-      <header className="fixed top-0 w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-gray-200 dark:border-zinc-800 z-50 h-16 flex items-center justify-between px-6">
-        <div className="flex items-center gap-4">
-             <div className="w-9 h-9 rounded-xl bg-gold flex items-center justify-center font-black text-black shadow-lg shadow-gold/20">CP</div>
+      <header className="fixed top-0 w-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 z-50 h-16 flex items-center justify-between px-4 sm:px-6 transition-all">
+        <div className="flex items-center gap-3">
+             <div className="w-8 h-8 rounded-lg bg-gold flex items-center justify-center font-black text-black shadow-md">CP</div>
              <button 
                 onClick={() => !profileData.isPremium && setShowPremiumModal(true)}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest transition-all ${status.color} ${!profileData.isPremium ? 'hover:scale-105 active:scale-95' : ''}`}
+                className={`flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black tracking-widest transition-all ${status.color} ${!profileData.isPremium ? 'hover:scale-105' : ''}`}
              >
-                <i className={`fa-solid ${status.icon}`}></i> {status.label}
+                <i className={`fa-solid ${status.icon}`}></i> <span className="hidden xs:inline">{status.label}</span>
              </button>
         </div>
-        <div className="flex items-center gap-3">
-             <button onClick={() => window.open(`/${profileData.alias}`, '_blank')} className="hidden sm:flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl border border-zinc-700 text-gold hover:bg-gold/5 transition-colors">
-                <i className="fa-solid fa-external-link-alt"></i> Visualizar
+        <div className="flex items-center gap-2">
+             <button onClick={() => window.open(`/${profileData.alias}`, '_blank')} className="flex items-center gap-2 text-[10px] font-black px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-gold hover:bg-gold/5">
+                <i className="fa-solid fa-eye"></i> <span className="hidden sm:inline">VER</span>
              </button>
-             <button onClick={() => supabase.auth.signOut().then(() => navigate('/'))} className="text-xs font-bold text-red-500 hover:text-red-400 p-2">Sair</button>
+             <button onClick={() => supabase.auth.signOut().then(() => navigate('/'))} className="text-[10px] font-black text-red-500 px-2">SAIR</button>
         </div>
       </header>
 
-      <div className="pt-24 px-4 max-w-2xl mx-auto space-y-8">
+      <div className="pt-24 px-4 max-w-xl mx-auto space-y-6">
          {!profileData.isPremium && (
-             <div className="bg-gradient-to-r from-gold/20 to-gold/5 border border-gold/30 p-5 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-4">
-                 <div className="flex items-center gap-4 text-left">
-                     <div className="w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center text-gold">
-                        <i className="fa-solid fa-bolt"></i>
-                     </div>
+             <div className="bg-gradient-to-br from-gold/15 to-gold/5 border border-gold/20 p-4 rounded-2xl flex items-center justify-between gap-4">
+                 <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 bg-gold/20 rounded-xl flex items-center justify-center text-gold"><i className="fa-solid fa-clock-rotate-left"></i></div>
                      <div>
-                        <p className="text-[11px] font-bold text-gold uppercase tracking-wider">Modo Demonstração</p>
-                        <p className="text-xs text-gray-400">Seu perfil será bloqueado em {trialDays} dias.</p>
+                        <p className="text-[10px] font-black text-gold uppercase tracking-widest">Teste Grátis</p>
+                        <p className="text-[11px] text-gray-500">Expira em {trialDays} dias</p>
                      </div>
                  </div>
-                 <button 
-                    onClick={() => setShowPremiumModal(true)}
-                    className="w-full sm:w-auto bg-gold hover:bg-yellow-400 text-black text-[10px] font-black px-6 py-3 rounded-xl transition-all shadow-lg shadow-gold/20"
-                >
-                    REMOVER LIMITES
-                </button>
+                 <button onClick={() => setShowPremiumModal(true)} className="bg-gold text-black text-[9px] font-black px-4 py-2.5 rounded-lg shadow-lg">UPGRADE</button>
              </div>
          )}
 
-         {/* Edição de Link Principal */}
-         <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-200 dark:border-zinc-800 shadow-sm">
-            <h2 className="text-xs font-black text-gray-500 uppercase mb-4 tracking-[0.2em]">Endereço Digital</h2>
-            <div className="flex items-center bg-gray-50 dark:bg-black rounded-2xl border border-gray-200 dark:border-zinc-800 p-2 group focus-within:border-gold transition-colors">
-                <span className="pl-4 pr-1 text-gray-400 text-sm font-medium">meucartao.pro/</span>
+         {/* Endereço Digital - Correção de Layout Mobile (Sem Absolute) */}
+         <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50">
+            <h2 className="text-[10px] font-black text-gray-400 uppercase mb-3 tracking-widest ml-1">Endereço Digital</h2>
+            <div className="flex items-center gap-1 bg-white dark:bg-black rounded-2xl border border-gray-200 dark:border-zinc-800 p-1 group focus-within:border-gold transition-all shadow-sm">
+                <span className="pl-3 text-gray-400 text-xs font-bold whitespace-nowrap shrink-0">meucartao.pro/</span>
                 <input 
                     type="text" 
                     value={profileData.alias} 
                     onChange={(e) => setProfileData({...profileData, alias: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})} 
-                    className="flex-1 bg-transparent p-3 outline-none font-black text-gold text-lg" 
+                    className="flex-1 bg-transparent py-3 px-1 outline-none font-black text-gold text-sm min-w-[80px]" 
                     placeholder="seu-nome"
                 />
-                <button onClick={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/${profileData.alias}`);
-                    setCopiedLink(true);
-                    setTimeout(() => setCopiedLink(false), 2000);
-                }} className="p-3 text-zinc-500 hover:text-gold transition-colors">
+                <button 
+                  onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/${profileData.alias}`);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2000);
+                  }} 
+                  className="p-3 text-zinc-400 hover:text-gold transition-colors shrink-0"
+                >
                     {copiedLink ? <i className="fa-solid fa-check text-green-500"></i> : <i className="fa-regular fa-copy"></i>}
                 </button>
             </div>
          </section>
 
-         {/* Conteúdo do Perfil */}
-         <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-200 dark:border-zinc-800 space-y-6">
-             <h2 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">Informações Gerais</h2>
-             
-             <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Foto de Perfil</label>
-                    <div onClick={() => avatarInputRef.current?.click()} className="aspect-square rounded-3xl bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 flex items-center justify-center cursor-pointer overflow-hidden relative group hover:border-gold transition-colors">
-                        {profileData.avatarUrl ? (
-                            <img src={profileData.avatarUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                        ) : (
-                            <i className="fa-solid fa-user-plus text-2xl text-zinc-700"></i>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <i className="fa-solid fa-camera text-white"></i>
+         {/* Seção de QR Code com Restrição Premium */}
+         <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 flex flex-col items-center relative overflow-hidden">
+            <h2 className="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest self-start ml-1">Seu QR Code</h2>
+            
+            <div className="relative mb-4 group">
+                <div className={`p-3 bg-white rounded-2xl shadow-xl transition-all duration-500 ${!profileData.isPremium ? 'blur-sm grayscale opacity-50' : ''}`}>
+                    <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`} 
+                        alt="QR Code" 
+                        className="w-32 h-32"
+                    />
+                </div>
+                {!profileData.isPremium && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/5 rounded-2xl">
+                        <div className="w-10 h-10 rounded-full bg-gold text-black flex items-center justify-center shadow-lg animate-bounce">
+                            <i className="fa-solid fa-lock"></i>
                         </div>
+                    </div>
+                )}
+            </div>
+
+            {profileData.isPremium ? (
+                <button 
+                    onClick={downloadQRCode}
+                    className="flex items-center gap-2 text-[10px] font-black text-gold hover:text-gold-light transition-colors uppercase tracking-widest"
+                >
+                    <i className="fa-solid fa-download"></i> Baixar QR Code
+                </button>
+            ) : (
+                <button 
+                    onClick={() => setShowPremiumModal(true)}
+                    className="bg-gold/10 text-gold border border-gold/20 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gold/20 transition-all"
+                >
+                    Liberar QR Code <i className="fa-solid fa-crown ml-1"></i>
+                </button>
+            )}
+         </section>
+
+         {/* Informações Gerais */}
+         <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 space-y-6 shadow-sm">
+             <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Aparência do Cartão</h2>
+             
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Foto Perfil</label>
+                    <div onClick={() => avatarInputRef.current?.click()} className="aspect-square rounded-2xl bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 flex items-center justify-center cursor-pointer overflow-hidden relative group hover:border-gold transition-colors">
+                        {profileData.avatarUrl ? (
+                            <img src={profileData.avatarUrl} className="w-full h-full object-cover" />
+                        ) : (
+                            <i className="fa-solid fa-user-plus text-xl text-zinc-700"></i>
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i className="fa-solid fa-camera text-white"></i></div>
                     </div>
                     <input type="file" ref={avatarInputRef} className="hidden" onChange={(e) => {
                          const file = e.target.files?.[0];
@@ -274,16 +299,14 @@ const Dashboard: React.FC = () => {
                     }} />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Imagem de Fundo</label>
-                    <div onClick={() => bgInputRef.current?.click()} className="aspect-square rounded-3xl bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 flex items-center justify-center cursor-pointer overflow-hidden relative group hover:border-gold transition-colors">
+                    <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Foto Fundo</label>
+                    <div onClick={() => bgInputRef.current?.click()} className="aspect-square rounded-2xl bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 flex items-center justify-center cursor-pointer overflow-hidden relative group hover:border-gold transition-colors">
                         {profileData.backgroundUrl ? (
-                            <img src={profileData.backgroundUrl} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                            <img src={profileData.backgroundUrl} className="w-full h-full object-cover" />
                         ) : (
-                            <i className="fa-solid fa-image text-2xl text-zinc-700"></i>
+                            <i className="fa-solid fa-image text-xl text-zinc-700"></i>
                         )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <i className="fa-solid fa-upload text-white"></i>
-                        </div>
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i className="fa-solid fa-upload text-white"></i></div>
                     </div>
                     <input type="file" ref={bgInputRef} className="hidden" onChange={(e) => {
                          const file = e.target.files?.[0];
@@ -296,36 +319,33 @@ const Dashboard: React.FC = () => {
                 </div>
              </div>
 
-             <div className="space-y-4">
+             <div className="space-y-4 pt-2">
                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nome de Exibição</label>
-                     <input type="text" placeholder="Ex: Mariana Xavier" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-2xl outline-none focus:border-gold transition-colors text-sm font-bold" />
+                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nome Completo</label>
+                     <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-bold" />
                  </div>
                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Cargo ou Especialidade</label>
-                     <input type="text" placeholder="Ex: Arquiteta de Interiores" value={profileData.title} onChange={(e) => setProfileData({...profileData, title: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-2xl outline-none focus:border-gold transition-colors text-sm font-bold" />
+                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Especialidade</label>
+                     <input type="text" value={profileData.title} onChange={(e) => setProfileData({...profileData, title: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-bold" />
                  </div>
                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Sobre Você</label>
-                     <textarea placeholder="Conte um pouco sobre seu trabalho..." rows={3} value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-2xl outline-none focus:border-gold transition-colors text-sm font-medium resize-none" />
+                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Biografia</label>
+                     <textarea rows={3} value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-medium resize-none" />
                  </div>
              </div>
          </section>
 
-         {/* Links e Botões */}
-         <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-200 dark:border-zinc-800">
-             <h2 className="text-xs font-black text-gray-500 uppercase tracking-[0.2em] mb-6">Canais de Atendimento</h2>
-             <div className="space-y-4">
+         {/* Canais de Atendimento */}
+         <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 shadow-sm">
+             <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Contatos Diretos</h2>
+             <div className="space-y-3">
                  {quickActions.map((action, idx) => (
-                     <div key={idx} className="group flex items-center gap-4 bg-gray-50 dark:bg-black/50 p-4 rounded-2xl border border-gray-200 dark:border-zinc-800 focus-within:border-gold transition-all">
-                         <div className="w-12 h-12 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-gold text-xl group-hover:scale-110 transition-transform">
-                            <i className={action.icon}></i>
-                         </div>
+                     <div key={idx} className="flex items-center gap-3 bg-gray-50 dark:bg-black/40 p-3 rounded-xl border border-gray-100 dark:border-zinc-800 focus-within:border-gold transition-all">
+                         <div className="w-10 h-10 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-gold text-lg"><i className={action.icon}></i></div>
                          <div className="flex-1">
-                             <div className="text-[9px] font-black text-zinc-500 uppercase tracking-widest mb-1">{action.label}</div>
                              <input 
                                 type="text" 
-                                placeholder={`Insira seu ${action.label}`}
+                                placeholder={action.label}
                                 value={action.url.replace('https://wa.me/55', '').replace('mailto:', '').replace('https://maps.google.com/?q=', '')} 
                                 onChange={(e) => {
                                     const newActions = [...quickActions];
@@ -336,7 +356,7 @@ const Dashboard: React.FC = () => {
                                     newActions[idx].url = val;
                                     setQuickActions(newActions);
                                 }}
-                                className="w-full bg-transparent outline-none text-sm font-bold text-gray-800 dark:text-white" 
+                                className="w-full bg-transparent outline-none text-xs font-bold text-gray-800 dark:text-white" 
                              />
                          </div>
                      </div>
@@ -345,20 +365,26 @@ const Dashboard: React.FC = () => {
          </section>
       </div>
 
-      {/* Botão Salvar Flutuante */}
-      <div className="fixed bottom-0 w-full bg-gradient-to-t from-white dark:from-black to-transparent p-6 border-t border-gray-100 dark:border-zinc-800/50 z-40 flex justify-center">
+      {/* Botão Salvar - Refatorado para Mobile */}
+      <div className="fixed bottom-0 w-full bg-white/80 dark:bg-black/80 backdrop-blur-xl p-4 sm:p-6 border-t border-gray-100 dark:border-zinc-800/50 z-[60] flex justify-center pb-safe">
         <button 
             onClick={handleSave} 
             disabled={isSaving} 
-            className="w-full max-w-md bg-gold hover:bg-yellow-400 text-black font-black py-5 rounded-2xl shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+            className="w-full max-w-lg bg-gold hover:bg-yellow-400 text-black font-black py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
         >
-            {isSaving ? (
-                <><i className="fa-solid fa-spinner fa-spin"></i> SALVANDO...</>
-            ) : (
-                <><i className="fa-solid fa-rocket"></i> PUBLICAR NO MEU PERFIL</>
-            )}
+            {isSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-cloud-arrow-up"></i>}
+            <span className="tracking-widest uppercase text-xs">Atualizar Perfil</span>
         </button>
       </div>
+
+      <style>{`
+        .pb-safe {
+            padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+        }
+        @media (max-width: 350px) {
+            .xs\\:inline { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 };

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useRouter } from '../lib/routerContext';
 
@@ -27,7 +28,7 @@ const LandingPage: React.FC = () => {
                 onClick={() => navigate('/dashboard')}
                 className="bg-white text-black px-4 py-2 rounded-full text-sm font-bold hover:bg-gold hover:scale-105 transition-all"
               >
-                Criar Grátis
+                Testar Grátis
               </button>
             </div>
           </div>
