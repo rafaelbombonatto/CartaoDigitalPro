@@ -1,3 +1,4 @@
+
 import React, { useRef, useState } from 'react';
 import { ProfileData, QuickAction, SocialLink, UploadPending } from '../types';
 import Auth from './Auth';
@@ -14,7 +15,7 @@ interface AdminPanelProps {
   setQuickActions: (actions: QuickAction[]) => void;
   onSave: (pendingUploads: UploadPending[]) => Promise<void>;
   isSaving: boolean;
-  session: any; // Session object from Supabase
+  session: any;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -22,13 +23,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 }) => {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
-  
-  // Estado local para armazenar arquivos que precisam ser enviados ao Supabase ao clicar em Salvar
   const [pendingUploads, setPendingUploads] = useState<UploadPending[]>([]);
 
   if (!isOpen) return null;
 
-  // Se não estiver logado, mostra tela de Auth
   if (!session) {
     return (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex justify-end">
@@ -58,18 +56,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setProfileData({ ...profileData, alias: value });
   };
 
-  // Prepara o arquivo para upload mas mostra preview local imediatamente
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>, field: 'avatarUrl' | 'backgroundUrl') => {
     const file = e.target.files?.[0];
     if (file) {
       const previewUrl = URL.createObjectURL(file);
-      
-      // Atualiza visualmente
       setProfileData({ ...profileData, [field]: previewUrl });
-      
-      // Marca para upload
       setPendingUploads(prev => [
-        ...prev.filter(p => p.field !== field), // Remove anterior se houver
+        ...prev.filter(p => p.field !== field),
         { field, file, previewUrl }
       ]);
     }
@@ -114,7 +107,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleSaveClick = async () => {
     await onSave(pendingUploads);
-    setPendingUploads([]); // Limpa pendentes após sucesso
+    setPendingUploads([]);
   };
 
   const handleLogout = async () => {
@@ -126,10 +119,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex justify-end">
       <div className="w-full max-w-md bg-white dark:bg-zinc-900 h-full overflow-y-auto shadow-2xl animate-fade-in border-l border-white/10 flex flex-col">
         
-        {/* Header Fixo */}
         <div className="p-4 border-b border-gray-200 dark:border-zinc-700 flex justify-between items-center sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur z-20">
             <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Editor</h2>
+                <h2 className="text-xl font-bold text-gray-800 dark:text-white">Editor de Perfil</h2>
                 <button onClick={handleLogout} className="text-xs text-red-400 hover:text-red-500 underline ml-2">Sair</button>
             </div>
           <button onClick={onClose} className="p-2 bg-gray-100 dark:bg-zinc-800 rounded-full hover:bg-red-100 hover:text-red-500 transition-colors">
@@ -138,18 +130,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
 
         <div className="p-6 space-y-8 flex-1">
-          
-          {/* Alias */}
           <section className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-500/30">
             <h3 className="text-sm uppercase tracking-wider font-bold text-indigo-600 dark:text-indigo-400 mb-2">
-              <i className="fa-solid fa-link mr-2"></i>Link Personalizado
+              <i className="fa-solid fa-link mr-2"></i>Endereço Digital
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-              Define o endereço único (URL) do seu cartão.
+              Defina o link exclusivo do seu cartão.
             </p>
             <div className="flex items-center">
               <span className="bg-gray-100 dark:bg-zinc-800 border border-r-0 border-gray-200 dark:border-zinc-700 p-2 text-sm text-gray-500 rounded-l">
-                app/
+                cartao.pro/
               </span>
               <input 
                 type="text" 
@@ -161,26 +151,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </section>
 
-          {/* Theme */}
-          <section className="space-y-3">
-             <h3 className="text-sm uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Cor do Tema</h3>
-             <div className="flex gap-3 items-center">
-               <input 
-                  type="color" 
-                  value={profileData.themeColor}
-                  onChange={(e) => handleChange('themeColor', e.target.value)}
-                  className="h-10 w-20 rounded cursor-pointer border-0 p-0"
-               />
-               <span className="text-xs text-gray-500">Toque para mudar</span>
-             </div>
-          </section>
-
-          {/* Images */}
           <section className="space-y-4">
             <h3 className="text-sm uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Imagens</h3>
             <div className="flex gap-4">
               <div className="flex-1">
-                <label className="block text-xs mb-2 text-gray-500">Avatar</label>
+                <label className="block text-xs mb-2 text-gray-500">Foto de Perfil</label>
                 <div 
                   onClick={() => avatarInputRef.current?.click()}
                   className="h-24 rounded-lg bg-gray-100 dark:bg-zinc-800 border-2 border-dashed border-gray-300 dark:border-zinc-600 flex flex-col items-center justify-center cursor-pointer hover:border-gold transition-colors overflow-hidden relative"
@@ -207,57 +182,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
           </section>
 
-          {/* Info Pessoal */}
           <section className="space-y-4">
-            <h3 className="text-sm uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Dados</h3>
-            <input type="text" value={profileData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Nome" className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-sm outline-none text-black dark:text-white" />
-            <input type="text" value={profileData.title} onChange={(e) => handleChange('title', e.target.value)} placeholder="Título/Cargo" className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-sm outline-none text-black dark:text-white" />
-            <textarea value={profileData.bio} onChange={(e) => handleChange('bio', e.target.value)} rows={3} placeholder="Biografia" className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-sm outline-none text-black dark:text-white" />
+            <h3 className="text-sm uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Dados Pessoais</h3>
+            <input type="text" value={profileData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Seu Nome Completo" className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-3 text-sm outline-none text-black dark:text-white" />
+            <input type="text" value={profileData.title} onChange={(e) => handleChange('title', e.target.value)} placeholder="Cargo ou Especialidade" className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-3 text-sm outline-none text-black dark:text-white" />
+            <textarea value={profileData.bio} onChange={(e) => handleChange('bio', e.target.value)} rows={3} placeholder="Sua Biografia (Breve resumo profissional)" className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-3 text-sm outline-none text-black dark:text-white resize-none" />
           </section>
 
-          {/* Documento */}
           <section className="space-y-4">
-            <h3 className="text-sm uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Documento</h3>
-            <div className="grid grid-cols-3 gap-2">
-              <input type="text" value={profileData.document.label} onChange={(e) => handleDocumentChange('label', e.target.value)} placeholder="Tipo" className="col-span-1 w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-sm outline-none text-black dark:text-white" />
-              <input type="text" value={profileData.document.value} onChange={(e) => handleDocumentChange('value', e.target.value)} placeholder="Número" className="col-span-2 w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-sm outline-none text-black dark:text-white" />
-            </div>
-          </section>
-
-          {/* Actions */}
-          <section className="space-y-4">
-             <h3 className="text-sm uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Botões de Ação</h3>
+             <h3 className="text-sm uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Atendimento Direto</h3>
              {quickActions.map((action, idx) => (
                  <div key={idx} className="mb-3">
-                    <label className="block text-xs mb-1 text-gray-500 font-medium flex items-center gap-2"><i className={`${action.icon}`}></i> {action.label}</label>
-                    <input type="text" value={getDisplayValue(action)} onChange={(e) => handleSmartActionChange(idx, e.target.value)} className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-sm outline-none text-black dark:text-white" />
+                    <label className="block text-[10px] mb-1 text-gray-500 font-bold uppercase tracking-wider flex items-center gap-2"><i className={`${action.icon}`}></i> {action.label}</label>
+                    <input type="text" value={getDisplayValue(action)} onChange={(e) => handleSmartActionChange(idx, e.target.value)} className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-3 text-sm outline-none text-black dark:text-white" />
                  </div>
              ))}
           </section>
 
-          {/* Socials */}
-          <section className="space-y-4 pb-4">
+          <section className="space-y-4 pb-10">
              <h3 className="text-sm uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Redes Sociais</h3>
              {socialLinks.map((link, idx) => (
                <div key={idx} className="flex gap-2 items-center">
                   <div className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-zinc-800 rounded text-gray-500"><i className={link.icon}></i></div>
-                  <input type="text" value={link.url} onChange={(e) => handleSocialChange(idx, e.target.value)} className="flex-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-xs outline-none text-black dark:text-white" />
+                  <input type="text" value={link.url} onChange={(e) => handleSocialChange(idx, e.target.value)} className="flex-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-xs outline-none text-black dark:text-white" placeholder="https://instagram.com/seu-perfil" />
                </div>
              ))}
           </section>
         </div>
 
-        {/* Footer com Botão de Salvar */}
         <div className="p-4 border-t border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 sticky bottom-0 z-20">
           <button 
             onClick={handleSaveClick}
             disabled={isSaving}
-            className="w-full bg-gold hover:bg-gold-light text-black font-bold py-3 rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gold hover:bg-gold-light text-black font-black py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {isSaving ? (
-              <><i className="fa-solid fa-spinner fa-spin"></i> Salvando...</>
+              <><i className="fa-solid fa-spinner fa-spin"></i> SALVANDO...</>
             ) : (
-              <><i className="fa-solid fa-floppy-disk"></i> Salvar Alterações</>
+              <><i className="fa-solid fa-floppy-disk"></i> PUBLICAR ALTERAÇÕES</>
             )}
           </button>
         </div>

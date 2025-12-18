@@ -11,6 +11,19 @@ const Auth: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'error' | 'success' } | null>(null);
 
+  // Função para traduzir erros comuns do Supabase/Auth
+  const translateError = (error: any) => {
+    const msg = error.message || '';
+    if (msg.includes('Password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (msg.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
+    if (msg.includes('User already registered')) return 'Este e-mail já está cadastrado em nossa plataforma.';
+    if (msg.includes('Email not confirmed')) return 'Por favor, confirme seu e-mail antes de entrar.';
+    if (msg.includes('provider is not enabled')) return 'O login social não está configurado corretamente.';
+    if (msg.includes('Rate limit exceeded')) return 'Muitas tentativas. Tente novamente em alguns minutos.';
+    
+    return 'Ocorreu um erro inesperado. Tente novamente.';
+  };
+
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
@@ -24,6 +37,11 @@ const Auth: React.FC = () => {
         return;
     }
 
+    if (password.length < 6) {
+        setMessage({ text: 'A senha deve ter pelo menos 6 caracteres.', type: 'error' });
+        return;
+    }
+
     setLoading(true);
     setMessage(null);
 
@@ -34,7 +52,7 @@ const Auth: React.FC = () => {
           password,
         });
         if (error) throw error;
-        setMessage({ text: 'Cadastro realizado! Verifique seu e-mail ou faça login.', type: 'success' });
+        setMessage({ text: 'Cadastro realizado! Verifique seu e-mail para confirmar a conta.', type: 'success' });
         setIsSignUp(false);
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -42,11 +60,10 @@ const Auth: React.FC = () => {
           password,
         });
         if (error) throw error;
-        // Força a navegação para o dashboard após login bem sucedido
         navigate('/dashboard');
       }
     } catch (error: any) {
-      setMessage({ text: error.message || 'Ocorreu um erro.', type: 'error' });
+      setMessage({ text: translateError(error), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -64,14 +81,8 @@ const Auth: React.FC = () => {
       });
       if (error) throw error;
     } catch (error: any) {
-      console.error('Google Auth Error:', error);
-      let errorMsg = error.message || 'Erro ao conectar com Google.';
-      
-      if (errorMsg.includes('provider is not enabled')) {
-        errorMsg = 'O login com Google não está ativo no Supabase.';
-      }
-
-      setMessage({ text: errorMsg, type: 'error' });
+      console.error('Erro Auth Google:', error);
+      setMessage({ text: translateError(error), type: 'error' });
       setLoading(false);
     }
   };
@@ -84,15 +95,15 @@ const Auth: React.FC = () => {
                 <i className="fa-solid fa-user-lock"></i>
             </div>
             <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
-            {isSignUp ? 'Criar Conta' : 'Área Restrita'}
+            {isSignUp ? 'Criar Conta' : 'Área do Editor'}
             </h2>
             <p className="text-sm text-gray-500 mt-2">
-            Faça login para editar seu cartão digital.
+            Acesse para gerenciar seu cartão digital.
             </p>
         </div>
 
         {message && (
-          <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+          <div className={`p-4 rounded-xl text-xs font-bold ${message.type === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-green-500/10 text-green-500 border border-green-500/20'}`}>
             {message.text}
           </div>
         )}
@@ -115,44 +126,44 @@ const Auth: React.FC = () => {
 
           <div className="relative flex py-2 items-center">
             <div className="flex-grow border-t border-gray-300 dark:border-zinc-700"></div>
-            <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">Ou com e-mail</span>
+            <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-bold">Ou e-mail</span>
             <div className="flex-grow border-t border-gray-300 dark:border-zinc-700"></div>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-4">
             <input
               type="email"
-              placeholder="Seu e-mail"
+              placeholder="E-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-3 text-sm outline-none text-black dark:text-white focus:border-gold"
+              className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg p-3 text-sm outline-none text-black dark:text-white focus:border-gold"
             />
             <input
               type="password"
-              placeholder="Sua senha"
+              placeholder="Senha"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-3 text-sm outline-none text-black dark:text-white focus:border-gold"
+              className="w-full bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg p-3 text-sm outline-none text-black dark:text-white focus:border-gold"
             />
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gold hover:bg-gold-light text-black font-bold py-3 rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full bg-gold hover:bg-gold-light text-black font-black py-3 rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? <i className="fa-solid fa-spinner fa-spin"></i> : (isSignUp ? 'Cadastrar' : 'Entrar')}
+              {loading ? <i className="fa-solid fa-spinner fa-spin"></i> : (isSignUp ? 'CRIAR MINHA CONTA' : 'ENTRAR NO PAINEL')}
             </button>
           </form>
         </div>
 
         <div className="text-sm text-gray-500">
-          {isSignUp ? 'Já tem uma conta?' : 'Não tem uma conta?'}
+          {isSignUp ? 'Já possui cadastro?' : 'Novo por aqui?'}
           <button
             onClick={() => { setIsSignUp(!isSignUp); setMessage(null); }}
             className="ml-1 text-gold-dark dark:text-gold font-bold hover:underline"
           >
-            {isSignUp ? 'Entrar' : 'Cadastre-se'}
+            {isSignUp ? 'Fazer Login' : 'Criar Conta'}
           </button>
         </div>
       </div>
