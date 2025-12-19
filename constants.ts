@@ -4,16 +4,16 @@ import { ProfileData, QuickAction, SocialLink } from './types';
 export const DEFAULT_PROFILE: ProfileData = {
   alias: "marianaxavier",
   name: "Mariana Xavier",
-  title: "Corretora de Imóveis",
+  title: "Estrategista Imobiliária",
   document: {
     label: "CRECI",
     value: "012345456"
   },
-  bio: "A chave para o seu novo lar está aqui. Excelência e exclusividade em cada negociação.",
+  bio: "Especialista em alto padrão com foco em ROI imobiliário. Minha missão é transformar seu investimento em patrimônio sólido.",
   avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=256&h=256&auto=format&fit=crop",
   backgroundUrl: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1920&auto=format&fit=crop",
-  themeColor: "#D4AF37", // Default Gold
-  isPremium: false // Definido como false por padrão para novos usuários
+  themeColor: "#D4AF37",
+  isPremium: false
 };
 
 export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
@@ -25,20 +25,20 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   },
   {
     icon: "fa-solid fa-location-dot",
-    label: "Localização",
+    label: "Escritório",
     url: "https://maps.google.com",
     type: "map"
   },
   {
     icon: "fa-solid fa-envelope",
     label: "E-mail",
-    url: "mailto:contato@marianaxavier.com",
+    url: "mailto:contato@analisecardpro.com",
     type: "email"
   },
   {
     icon: "fa-solid fa-globe",
-    label: "Website",
-    url: "https://www.marianaxavier.com",
+    label: "Portfólio",
+    url: "https://www.analisecardpro.com",
     type: "website"
   }
 ];
