@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from '../lib/routerContext';
 import Background from './Background';
 import ProfileHeader from './ProfileHeader';
@@ -19,6 +19,8 @@ declare global {
     fbq: any;
     gtag: any;
     dataLayer: any;
+    _fbq_initialized?: boolean;
+    _ga4_initialized?: boolean;
   }
 }
 
@@ -38,13 +40,27 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
   const [quickActions, setQuickActions] = useState<QuickAction[]>(DEFAULT_QUICK_ACTIONS);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(DEFAULT_SOCIAL_LINKS);
 
-  // 1. Injeção de Rastreamento (Meta Pixel & GA4)
-  useEffect(() => {
-    if (loading || error) return;
+  // Helper para validar se uma ação deve ser exibida
+  const isActionValid = (action: QuickAction) => {
+      if (isDemo) return true;
+      return action.url && 
+             action.url !== '' && 
+             action.url !== '#' && 
+             action.url !== 'https://wa.me/55' && 
+             action.url !== 'mailto:' && 
+             action.url !== 'https://maps.google.com/?q=';
+  };
 
-    // Meta Pixel
-    if (profileData.metaPixelId) {
-      // Fix: Added optional indicators (?) to parameters n, t, s to resolve TS error "Expected 7 arguments, but got 4"
+  // Filtra as ações válidas para evitar lacunas no grid
+  const visibleActions = useMemo(() => {
+      return quickActions.filter(isActionValid);
+  }, [quickActions, isDemo]);
+
+  // 1. Sistema de Injeção de Rastreamento
+  useEffect(() => {
+    if (loading || error || isDemo) return;
+
+    if (profileData.metaPixelId && !window._fbq_initialized) {
       (function(f:any,b:any,e:any,v:any,n?:any,t?:any,s?:any)
       {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
       n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -53,12 +69,13 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       t.src=v;s=b.getElementsByTagName(e)[0];
       s.parentNode.insertBefore(t,s)}(window,document,'script',
       'https://connect.facebook.net/en_US/fbevents.js'));
+
       window.fbq('init', profileData.metaPixelId);
       window.fbq('track', 'PageView');
+      window._fbq_initialized = true;
     }
 
-    // Google Analytics 4
-    if (profileData.ga4MeasurementId) {
+    if (profileData.ga4MeasurementId && !window._ga4_initialized) {
       const script = document.createElement('script');
       script.async = true;
       script.src = `https://www.googletagmanager.com/gtag/js?id=${profileData.ga4MeasurementId}`;
@@ -67,57 +84,44 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       window.dataLayer = window.dataLayer || [];
       window.gtag = function(){window.dataLayer.push(arguments);}
       window.gtag('js', new Date());
-      window.gtag('config', profileData.ga4MeasurementId);
+      window.gtag('config', profileData.ga4MeasurementId, { page_path: window.location.pathname });
+      window._ga4_initialized = true;
     }
-  }, [profileData.metaPixelId, profileData.ga4MeasurementId, loading, error]);
+  }, [profileData.metaPixelId, profileData.ga4MeasurementId, loading, error, isDemo]);
 
-  // 2. Handler de Clique Inteligente
+  // 2. Handler de Clique
   const handleActionClick = useCallback(async (action: QuickAction | SocialLink, type: string) => {
     if (isDemo || !action.url || action.url === '#') return;
 
-    // Construir URL com UTMs
-    const utmUrl = new URL(action.url.startsWith('mailto:') || action.url.startsWith('https://wa.me/') ? action.url : 
-                   (action.url.startsWith('http') ? action.url : `https://${action.url}`));
-    
-    // Adicionar UTMs se for uma URL HTTP
-    if (utmUrl.protocol.startsWith('http')) {
-        utmUrl.searchParams.set('utm_source', 'cartaodigitalpro');
-        utmUrl.searchParams.set('utm_medium', 'card');
-        utmUrl.searchParams.set('utm_campaign', `${profileData.alias}_${type}`);
+    let finalUrl = action.url;
+    if (!finalUrl.startsWith('http') && !finalUrl.startsWith('mailto:') && !finalUrl.startsWith('tel:')) {
+        finalUrl = `https://${finalUrl}`;
     }
 
-    const finalUrl = utmUrl.toString();
+    try {
+        const urlObj = new URL(finalUrl);
+        if (urlObj.protocol.startsWith('http')) {
+            urlObj.searchParams.set('utm_source', 'cartaodigitalpro');
+            urlObj.searchParams.set('utm_medium', 'card');
+            urlObj.searchParams.set('utm_campaign', `${profileData.alias}_${type}`);
+            finalUrl = urlObj.toString();
+        }
+    } catch (e) {}
 
-    // Rastreamento Meta Pixel
-    if (profileData.metaPixelId && window.fbq) {
-      window.fbq('trackCustom', 'CardClick', { 
-        action_type: type, 
-        profile_alias: profileData.alias,
-        label: action.label 
-      });
+    if (window.fbq && profileData.metaPixelId) {
+      window.fbq('trackCustom', 'CardClick', { action_type: type, label: action.label, alias: profileData.alias });
     }
 
-    // Rastreamento GA4
-    if (profileData.ga4MeasurementId && window.gtag) {
-      window.gtag('event', 'card_click', {
-        event_category: 'card',
-        event_label: `${profileData.alias}_${type}`,
-        action_label: action.label
-      });
-    }
-
-    // Salvar no Banco (Supabase)
     if (userId) {
       supabase.from('profiles_clicks').insert({
         profile_id: userId,
         action_type: type,
         action_label: action.label,
         source: 'card'
-      }).then(({error}) => error && console.error("Error logging click:", error));
+      }).then(({error}) => error && console.error(error));
     }
 
-    // Redirecionar
-    window.open(finalUrl, '_blank');
+    setTimeout(() => { window.open(finalUrl, '_blank'); }, 100);
   }, [profileData, isDemo, userId]);
 
   useEffect(() => {
@@ -128,9 +132,6 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         } else {
             loadProfile(slug);
         }
-    } else {
-        setError(true);
-        setLoading(false);
     }
   }, [slug]);
 
@@ -153,14 +154,14 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             const content = data.content;
             if (content.profile) {
                 const profile = content.profile as ProfileData;
-                const finalProfile = {
+                setProfileData({
                     ...profile,
                     isPremium: profile.isPremium ?? false,
                     createdAt: profile.createdAt || data.created_at || new Date().toISOString()
-                };
-                setProfileData(finalProfile);
-                if (!finalProfile.isPremium) {
-                    const trialEnd = new Date(new Date(finalProfile.createdAt).getTime() + 7 * 24 * 60 * 60 * 1000); 
+                });
+                
+                if (!profile.isPremium) {
+                    const trialEnd = new Date(new Date(profile.createdAt || data.created_at).getTime() + 7 * 24 * 60 * 60 * 1000); 
                     if (new Date() > trialEnd) setIsExpired(true);
                 }
             }
@@ -174,46 +175,71 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       }
   };
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin"></div></div>;
-  if (error) return <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center"><i className="fa-solid fa-ghost text-6xl text-gray-700 mb-4"></i><h1 className="text-2xl font-bold mb-2">Cartão não encontrado</h1><button onClick={() => navigate('/')} className="bg-gold text-black font-bold px-6 py-3 rounded-full">Criar meu cartão</button></div>;
-  if (isExpired) return <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center"><h1 className="text-2xl font-bold mb-2">Cartão Expirado</h1><button onClick={() => navigate('/')} className="bg-white text-black font-bold px-6 py-3 rounded-lg">Acessar Painel</button></div>;
+  if (loading) return (
+    <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gold font-bold text-[10px] tracking-widest uppercase animate-pulse">Carregando Cartão...</p>
+        </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
+        <h1 className="text-2xl font-black mb-2 uppercase tracking-tighter">Perfil não encontrado</h1>
+        <button onClick={() => navigate('/')} className="bg-gold text-black font-black px-8 py-4 rounded-2xl uppercase text-xs tracking-widest shadow-lg shadow-gold/20">Criar meu cartão</button>
+    </div>
+  );
 
   return (
     <>
       <Background imageUrl={profileData.backgroundUrl} />
-      {isDemo && <div className="fixed top-0 left-0 w-full bg-indigo-600/90 text-white text-center text-[10px] font-bold py-1 z-50 tracking-widest uppercase">Modo de Demonstração</div>}
+      {isDemo && <div className="fixed top-0 left-0 w-full bg-indigo-600/90 text-white text-center text-[10px] font-black py-2 z-[100] tracking-widest uppercase">Modo de Demonstração</div>}
       
-      <main className={`min-h-screen w-full flex flex-col items-center justify-center p-4 relative z-10 pb-12 animate-fade-in ${isDemo ? 'pt-12' : ''}`}>
-        <div className="w-full max-w-[400px] bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl shadow-2xl p-6 sm:p-8 flex flex-col items-center relative overflow-hidden">
+      <main className={`min-h-screen w-full flex flex-col items-center justify-center p-4 relative z-10 pb-20 animate-fade-in ${isDemo ? 'pt-14' : ''}`}>
+        <div className="w-full max-w-[420px] bg-white/5 dark:bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-2xl p-6 sm:p-10 flex flex-col items-center relative overflow-hidden transition-all duration-500">
+          
           <ProfileHeader data={profileData} />
 
-          {/* Grid de Ações Rápidas com Interceptor de Clique */}
-          <div className="w-full grid grid-cols-2 gap-3 mb-2">
-            {quickActions.map((action, index) => (
-              <div key={index} onClick={(e) => { e.preventDefault(); handleActionClick(action, action.type); }}>
-                <ActionButton action={action} index={index} isDemo={isDemo} />
-              </div>
-            ))}
+          {/* Smart Grid de Ações Rápidas */}
+          <div className="w-full grid grid-cols-2 gap-4 mb-4">
+            {visibleActions.map((action, index) => {
+              // Se for o último item e o total for ímpar, ocupa 2 colunas
+              const isLastAndOdd = visibleActions.length % 2 !== 0 && index === visibleActions.length - 1;
+              return (
+                <div 
+                  key={index} 
+                  className={isLastAndOdd ? 'col-span-2' : ''}
+                  onClick={(e) => { e.preventDefault(); handleActionClick(action, action.type); }}
+                >
+                  <ActionButton action={action} index={index} isDemo={isDemo} />
+                </div>
+              );
+            })}
           </div>
 
           <SaveContactButton data={profileData} isDemo={isDemo} />
 
-          {/* Footer Social com Interceptor de Clique */}
-          <footer className="mt-auto pt-6 pb-4 border-t border-black/10 dark:border-white/10 w-full animate-slide-up transition-colors duration-300" style={{ animationDelay: '0.7s' }}>
-            <div className="flex justify-center gap-6 mb-4">
+          {/* Footer Social */}
+          <footer className="mt-8 pt-8 border-t border-white/5 w-full">
+            <div className="flex justify-center gap-6 mb-8">
                 {socialLinks.filter(l => l.url && l.url !== '#').map((link, idx) => (
                 <button
                     key={idx}
                     onClick={() => handleActionClick(link, 'social')}
-                    className="text-gray-400 hover:text-gold transition-all transform hover:scale-125"
+                    className="text-zinc-400 hover:text-gold transition-all transform hover:scale-125"
                 >
-                    <i className={`${link.icon} text-xl`}></i>
+                    <i className={`${link.icon} text-2xl`}></i>
                 </button>
                 ))}
             </div>
+            <div className="flex flex-col items-center opacity-20">
+                <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="text-[9px] text-white uppercase tracking-[0.3em] font-black">
+                    Cartão Digital <span className="text-gold">Pro</span>
+                </a>
+            </div>
           </footer>
         </div>
-        <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="mt-8 text-[10px] text-white/30 uppercase tracking-widest hover:text-gold transition-colors">Criado com Cartão Digital Pro</a>
       </main>
     </>
   );

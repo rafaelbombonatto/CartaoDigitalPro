@@ -24,27 +24,42 @@ const Dashboard: React.FC = () => {
   
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
+  
+  // Ref para controlar se o perfil já foi carregado inicialmente
+  const hasLoadedInitialData = useRef(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-          fetchProfile(session.user.id);
-      } else {
+    // Carregamento inicial da sessão
+    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      setSession(initialSession);
+      if (initialSession && !hasLoadedInitialData.current) {
+          fetchProfile(initialSession.user.id);
+      } else if (!initialSession) {
           setLoadingProfile(false);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setLoadingProfile(false);
+    // Listener de mudança de auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
+      // Só atualizamos a sessão se ela for diferente da atual para evitar re-renders por foco
+      if (currentSession?.user?.id !== session?.user?.id) {
+          setSession(currentSession);
+          if (currentSession && !hasLoadedInitialData.current) {
+              fetchProfile(currentSession.user.id);
+          } else if (!currentSession) {
+              setLoadingProfile(false);
+              hasLoadedInitialData.current = false;
+          }
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [session?.user?.id]); // Dependência específica no ID do usuário
 
   const fetchProfile = async (userId: string) => {
+    // Se já carregamos os dados uma vez, não sobrescrevemos para não perder edições locais
+    if (hasLoadedInitialData.current) return;
+
     try {
       setLoadingProfile(true);
       const { data, error } = await supabase
@@ -64,8 +79,13 @@ const Dashboard: React.FC = () => {
           setProfileData(profile);
           if (content.actions) setQuickActions(content.actions);
           if (content.links) setSocialLinks(content.links);
+          
+          // Marcamos que os dados iniciais foram carregados com sucesso
+          hasLoadedInitialData.current = true;
       } else {
+          // Usuário novo sem perfil no banco
           setProfileData({ ...DEFAULT_PROFILE, isPremium: false, createdAt: new Date().toISOString() });
+          hasLoadedInitialData.current = true;
       }
 
       const params = new URLSearchParams(window.location.search);
@@ -201,7 +221,10 @@ const Dashboard: React.FC = () => {
              <button onClick={() => window.open(`/${profileData.alias}`, '_blank')} className="flex items-center gap-2 text-[10px] font-black px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-gray-500 dark:text-gold hover:bg-gold/5">
                 <i className="fa-solid fa-eye"></i> <span className="hidden sm:inline">VER</span>
              </button>
-             <button onClick={() => supabase.auth.signOut().then(() => navigate('/'))} className="text-[10px] font-black text-red-500 px-2">SAIR</button>
+             <button onClick={() => supabase.auth.signOut().then(() => {
+                 hasLoadedInitialData.current = false;
+                 navigate('/');
+             })} className="text-[10px] font-black text-red-500 px-2">SAIR</button>
         </div>
       </header>
 
@@ -264,7 +287,7 @@ const Dashboard: React.FC = () => {
             )}
          </section>
 
-         {/* Marketing e Rastreamento (NOVO) */}
+         {/* Marketing e Rastreamento */}
          <section className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-[2rem] border border-indigo-100 dark:border-indigo-900/30 space-y-5">
              <div className="flex items-center gap-2 mb-2">
                 <i className="fa-solid fa-chart-line text-indigo-500"></i>
@@ -350,7 +373,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="fixed bottom-0 w-full bg-white/80 dark:bg-black/80 backdrop-blur-xl p-4 sm:p-6 border-t border-gray-100 dark:border-zinc-800/50 z-[60] flex justify-center pb-safe">
-        <button onClick={handleSave} disabled={isSaving} className="w-full max-lg bg-gold hover:bg-yellow-400 text-black font-black py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50">
+        <button onClick={handleSave} disabled={isSaving} className="w-full max-w-lg bg-gold hover:bg-yellow-400 text-black font-black py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50">
             {isSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-cloud-arrow-up"></i>}
             <span className="tracking-widest uppercase text-xs">Atualizar Perfil</span>
         </button>
