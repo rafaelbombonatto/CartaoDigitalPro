@@ -26,12 +26,13 @@ export interface ProfileData {
   avatarUrl: string;
   backgroundUrl: string;
   themeColor: string;
-  // Novos campos para controle de assinatura
-  createdAt?: string; // Data ISO string
+  createdAt?: string;
   isPremium?: boolean;
+  // Campos de Marketing e Rastreamento
+  metaPixelId?: string;
+  ga4MeasurementId?: string;
 }
 
-// Interface auxiliar para gerenciar uploads pendentes no AdminPanel
 export interface UploadPending {
   field: 'avatarUrl' | 'backgroundUrl';
   file: File;

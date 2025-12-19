@@ -129,25 +129,18 @@ const Dashboard: React.FC = () => {
     if (!profileData.isPremium) return;
     try {
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`;
-        
-        // Buscamos a imagem como blob para forçar o download direto
         const response = await fetch(qrUrl);
         const blob = await response.blob();
         const blobUrl = window.URL.createObjectURL(blob);
-        
         const link = document.createElement('a');
         link.href = blobUrl;
         link.download = `qrcode-${profileData.alias}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
-        // Limpeza de memória
         window.URL.revokeObjectURL(blobUrl);
     } catch (error) {
         console.error("Erro ao baixar QR Code:", error);
-        // Fallback simples caso o fetch falhe por CORS (embora api.qrserver geralmente permita)
-        window.open(`https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`, '_blank');
     }
   };
 
@@ -254,177 +247,115 @@ const Dashboard: React.FC = () => {
          {/* Seção de QR Code */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-5 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 flex flex-col items-center relative overflow-hidden">
             <h2 className="text-[10px] font-black text-gray-400 uppercase mb-4 tracking-widest self-start ml-1">Seu QR Code</h2>
-            
             <div className="relative mb-4 group">
                 <div className={`p-3 bg-white rounded-2xl shadow-xl transition-all duration-500 ${!profileData.isPremium ? 'blur-sm grayscale opacity-50' : ''}`}>
-                    <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`} 
-                        alt="QR Code" 
-                        className="w-32 h-32"
-                    />
+                    <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`} alt="QR Code" className="w-32 h-32" />
                 </div>
                 {!profileData.isPremium && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/5 rounded-2xl">
-                        <div className="w-10 h-10 rounded-full bg-gold text-black flex items-center justify-center shadow-lg animate-bounce">
-                            <i className="fa-solid fa-lock"></i>
-                        </div>
+                        <div className="w-10 h-10 rounded-full bg-gold text-black flex items-center justify-center shadow-lg animate-bounce"><i className="fa-solid fa-lock"></i></div>
                     </div>
                 )}
             </div>
-
             {profileData.isPremium ? (
-                <button 
-                    onClick={downloadQRCode}
-                    className="flex items-center gap-2 text-[10px] font-black text-gold hover:text-gold-light transition-colors uppercase tracking-widest"
-                >
-                    <i className="fa-solid fa-download"></i> Baixar Arquivo PNG
-                </button>
+                <button onClick={downloadQRCode} className="flex items-center gap-2 text-[10px] font-black text-gold hover:text-gold-light transition-colors uppercase tracking-widest"><i className="fa-solid fa-download"></i> Baixar Arquivo PNG</button>
             ) : (
-                <button 
-                    onClick={() => setShowPremiumModal(true)}
-                    className="bg-gold/10 text-gold border border-gold/20 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gold/20 transition-all"
-                >
-                    Liberar QR Code <i className="fa-solid fa-crown ml-1"></i>
-                </button>
+                <button onClick={() => setShowPremiumModal(true)} className="bg-gold/10 text-gold border border-gold/20 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gold/20 transition-all">Liberar QR Code <i className="fa-solid fa-crown ml-1"></i></button>
             )}
+         </section>
+
+         {/* Marketing e Rastreamento (NOVO) */}
+         <section className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-[2rem] border border-indigo-100 dark:border-indigo-900/30 space-y-5">
+             <div className="flex items-center gap-2 mb-2">
+                <i className="fa-solid fa-chart-line text-indigo-500"></i>
+                <h2 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Marketing & Analytics</h2>
+             </div>
+             <div className="space-y-4">
+                 <div className="space-y-1">
+                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Meta Pixel ID (Facebook)</label>
+                     <input 
+                        type="text" 
+                        value={profileData.metaPixelId || ''} 
+                        onChange={(e) => setProfileData({...profileData, metaPixelId: e.target.value})} 
+                        placeholder="Ex: 123456789012345"
+                        className="w-full bg-white dark:bg-black border border-indigo-100 dark:border-indigo-900/30 p-4 rounded-xl outline-none focus:border-indigo-500 text-xs font-mono" 
+                     />
+                 </div>
+                 <div className="space-y-1">
+                     <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">GA4 Measurement ID (Google)</label>
+                     <input 
+                        type="text" 
+                        value={profileData.ga4MeasurementId || ''} 
+                        onChange={(e) => setProfileData({...profileData, ga4MeasurementId: e.target.value})} 
+                        placeholder="Ex: G-XXXXXXXXXX"
+                        className="w-full bg-white dark:bg-black border border-indigo-100 dark:border-indigo-900/30 p-4 rounded-xl outline-none focus:border-indigo-500 text-xs font-mono" 
+                     />
+                 </div>
+             </div>
          </section>
 
          {/* Informações Gerais */}
          <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 space-y-6 shadow-sm">
              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Aparência do Cartão</h2>
-             
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Foto Perfil</label>
                     <div onClick={() => avatarInputRef.current?.click()} className="aspect-square rounded-2xl bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 flex items-center justify-center cursor-pointer overflow-hidden relative group hover:border-gold transition-colors">
-                        {profileData.avatarUrl ? (
-                            <img src={profileData.avatarUrl} className="w-full h-full object-cover" />
-                        ) : (
-                            <i className="fa-solid fa-user-plus text-xl text-zinc-700"></i>
-                        )}
+                        {profileData.avatarUrl ? <img src={profileData.avatarUrl} className="w-full h-full object-cover" /> : <i className="fa-solid fa-user-plus text-xl text-zinc-700"></i>}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i className="fa-solid fa-camera text-white"></i></div>
                     </div>
-                    <input type="file" ref={avatarInputRef} className="hidden" onChange={(e) => {
-                         const file = e.target.files?.[0];
-                         if (file) {
-                             const preview = URL.createObjectURL(file);
-                             setProfileData({...profileData, avatarUrl: preview});
-                             setPendingUploads(prev => [...prev.filter(u => u.field !== 'avatarUrl'), {field: 'avatarUrl', file, previewUrl: preview}]);
-                         }
-                    }} />
+                    <input type="file" ref={avatarInputRef} className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const preview = URL.createObjectURL(file); setProfileData({...profileData, avatarUrl: preview}); setPendingUploads(prev => [...prev.filter(u => u.field !== 'avatarUrl'), {field: 'avatarUrl', file, previewUrl: preview}]); } }} />
                 </div>
                 <div className="space-y-2">
                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Foto Fundo</label>
                     <div onClick={() => bgInputRef.current?.click()} className="aspect-square rounded-2xl bg-gray-50 dark:bg-black border-2 border-dashed border-gray-200 dark:border-zinc-800 flex items-center justify-center cursor-pointer overflow-hidden relative group hover:border-gold transition-colors">
-                        {profileData.backgroundUrl ? (
-                            <img src={profileData.backgroundUrl} className="w-full h-full object-cover" />
-                        ) : (
-                            <i className="fa-solid fa-image text-xl text-zinc-700"></i>
-                        )}
+                        {profileData.backgroundUrl ? <img src={profileData.backgroundUrl} className="w-full h-full object-cover" /> : <i className="fa-solid fa-image text-xl text-zinc-700"></i>}
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"><i className="fa-solid fa-upload text-white"></i></div>
                     </div>
-                    <input type="file" ref={bgInputRef} className="hidden" onChange={(e) => {
-                         const file = e.target.files?.[0];
-                         if (file) {
-                             const preview = URL.createObjectURL(file);
-                             setProfileData({...profileData, backgroundUrl: preview});
-                             setPendingUploads(prev => [...prev.filter(u => u.field !== 'backgroundUrl'), {field: 'backgroundUrl', file, previewUrl: preview}]);
-                         }
-                    }} />
+                    <input type="file" ref={bgInputRef} className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) { const preview = URL.createObjectURL(file); setProfileData({...profileData, backgroundUrl: preview}); setPendingUploads(prev => [...prev.filter(u => u.field !== 'backgroundUrl'), {field: 'backgroundUrl', file, previewUrl: preview}]); } }} />
                 </div>
              </div>
-
              <div className="space-y-4 pt-2">
-                 <div className="space-y-1">
-                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Nome Completo</label>
-                     <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-bold" />
-                 </div>
-                 <div className="space-y-1">
-                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Especialidade</label>
-                     <input type="text" value={profileData.title} onChange={(e) => setProfileData({...profileData, title: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-bold" />
-                 </div>
-                 <div className="space-y-1">
-                     <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Biografia</label>
-                     <textarea rows={3} value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-medium resize-none" />
-                 </div>
+                 <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} placeholder="Nome Completo" className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-bold" />
+                 <input type="text" value={profileData.title} onChange={(e) => setProfileData({...profileData, title: e.target.value})} placeholder="Especialidade" className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-bold" />
+                 <textarea rows={3} value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} placeholder="Biografia" className="w-full bg-gray-50 dark:bg-black border border-gray-100 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-gold text-sm font-medium resize-none" />
              </div>
          </section>
 
-         {/* Canais de Atendimento */}
+         {/* Contatos Diretos */}
          <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 shadow-sm">
              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Contatos Diretos</h2>
              <div className="space-y-3">
                  {quickActions.map((action, idx) => (
                      <div key={idx} className="flex items-center gap-3 bg-gray-50 dark:bg-black/40 p-3 rounded-xl border border-gray-100 dark:border-zinc-800 focus-within:border-gold transition-all">
                          <div className="w-10 h-10 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-gold text-lg"><i className={action.icon}></i></div>
-                         <div className="flex-1">
-                             <input 
-                                type="text" 
-                                placeholder={action.label}
-                                value={action.url.replace('https://wa.me/55', '').replace('mailto:', '').replace('https://maps.google.com/?q=', '')} 
-                                onChange={(e) => {
-                                    const newActions = [...quickActions];
-                                    let val = e.target.value;
-                                    if (action.type === 'whatsapp') val = `https://wa.me/55${val.replace(/\D/g, '')}`;
-                                    else if (action.type === 'email') val = `mailto:${val}`;
-                                    else if (action.type === 'map') val = `https://maps.google.com/?q=${encodeURIComponent(val)}`;
-                                    newActions[idx].url = val;
-                                    setQuickActions(newActions);
-                                }}
-                                className="w-full bg-transparent outline-none text-xs font-bold text-gray-800 dark:text-white" 
-                             />
-                         </div>
+                         <div className="flex-1"><input type="text" value={action.url.replace('https://wa.me/55', '').replace('mailto:', '').replace('https://maps.google.com/?q=', '')} onChange={(e) => { const newActions = [...quickActions]; let val = e.target.value; if (action.type === 'whatsapp') val = `https://wa.me/55${val.replace(/\D/g, '')}`; else if (action.type === 'email') val = `mailto:${val}`; else if (action.type === 'map') val = `https://maps.google.com/?q=${encodeURIComponent(val)}`; newActions[idx].url = val; setQuickActions(newActions); }} className="w-full bg-transparent outline-none text-xs font-bold text-gray-800 dark:text-white" /></div>
                      </div>
                  ))}
              </div>
          </section>
 
-         {/* NOVO: Redes Sociais Restauradas */}
+         {/* Redes Sociais */}
          <section className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 shadow-sm">
              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Redes Sociais</h2>
              <div className="space-y-4">
                  {socialLinks.map((link, idx) => (
                      <div key={idx} className="flex items-center gap-3 bg-gray-50 dark:bg-black/40 p-3 rounded-xl border border-gray-100 dark:border-zinc-800 focus-within:border-gold transition-all">
                          <div className="w-10 h-10 rounded-lg bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-600 dark:text-gold text-lg"><i className={link.icon}></i></div>
-                         <div className="flex-1">
-                             <input 
-                                type="text" 
-                                placeholder={link.label}
-                                value={link.url === '#' ? '' : link.url} 
-                                onChange={(e) => {
-                                    const newLinks = [...socialLinks];
-                                    newLinks[idx].url = e.target.value;
-                                    setSocialLinks(newLinks);
-                                }}
-                                className="w-full bg-transparent outline-none text-xs font-bold text-gray-800 dark:text-white" 
-                             />
-                         </div>
+                         <div className="flex-1"><input type="text" value={link.url === '#' ? '' : link.url} onChange={(e) => { const newLinks = [...socialLinks]; newLinks[idx].url = e.target.value; setSocialLinks(newLinks); }} className="w-full bg-transparent outline-none text-xs font-bold text-gray-800 dark:text-white" /></div>
                      </div>
                  ))}
              </div>
          </section>
       </div>
 
-      {/* Botão Salvar */}
       <div className="fixed bottom-0 w-full bg-white/80 dark:bg-black/80 backdrop-blur-xl p-4 sm:p-6 border-t border-gray-100 dark:border-zinc-800/50 z-[60] flex justify-center pb-safe">
-        <button 
-            onClick={handleSave} 
-            disabled={isSaving} 
-            className="w-full max-w-lg bg-gold hover:bg-yellow-400 text-black font-black py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
-        >
+        <button onClick={handleSave} disabled={isSaving} className="w-full max-lg bg-gold hover:bg-yellow-400 text-black font-black py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50">
             {isSaving ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-solid fa-cloud-arrow-up"></i>}
             <span className="tracking-widest uppercase text-xs">Atualizar Perfil</span>
         </button>
       </div>
-
-      <style>{`
-        .pb-safe {
-            padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
-        }
-        @media (max-width: 350px) {
-            .xs\\:inline { display: none !important; }
-        }
-      `}</style>
+      <style>{`.pb-safe { padding-bottom: max(1.5rem, env(safe-area-inset-bottom)); } @media (max-width: 350px) { .xs\\:inline { display: none !important; } }`}</style>
     </div>
   );
 };

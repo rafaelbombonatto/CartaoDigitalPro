@@ -40,9 +40,10 @@ export const getAiAssistantResponse = async (userMessage: string, userId: string
   Quando o usuário demonstrar que quer comprar ou fazer o upgrade, use a ferramenta 'criar_preferencia_mercadopago'.
   O user_id é: ${userId}. O plano é: 'vitalicio'. O valor é: 4990. A base_url é: ${window.location.origin}.`;
 
+  // Fix: Use direct string for contents instead of object array to align with SDK examples
   const response = await ai.models.generateContent({
     model: model,
-    contents: [{ parts: [{ text: userMessage }] }],
+    contents: userMessage,
     config: {
       systemInstruction,
       tools: [{ functionDeclarations: [checkoutTool] }],
