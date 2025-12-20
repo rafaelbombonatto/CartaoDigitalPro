@@ -119,6 +119,8 @@ const Dashboard: React.FC = () => {
           let profile = content.profile || { ...DEFAULT_PROFILE };
           profile.isPremium = !!profile.isPremium;
           profile.alias = data.alias || profile.alias;
+          // Garantir estrutura do documento
+          if (!profile.document) profile.document = { label: '', value: '' };
           setProfileData(profile);
           if (content.actions) setQuickActions(content.actions);
           if (content.links) setSocialLinks(content.links);
@@ -163,24 +165,30 @@ const Dashboard: React.FC = () => {
 
   const exportCSV = () => {
       if (rawClicks.length === 0) return alert("Sem dados para exportar ainda.");
-      const headers = "data_hora,tipo,destino\n";
+      
+      const headers = "data,hora,tipo,destino\n";
+      
       const rows = rawClicks.map(click => {
           const date = new Date(click.created_at);
-          date.setHours(date.getHours() - 3);
-          const dataHora = date.toLocaleString('pt-BR', {
-              day: '2-digit', month: '2-digit', year: 'numeric',
-              hour: '2-digit', minute: '2-digit', second: '2-digit'
+          date.setHours(date.getHours() - 3); 
+          
+          const dataStr = date.toLocaleDateString('pt-BR');
+          const horaStr = date.toLocaleTimeString('pt-BR', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
           });
+
           const tipo = click.action_type || 'desconhecido';
           const destino = click.action_label || 'sem_nome';
-          return `${dataHora},${tipo.replace(/,/g, '')},${destino.replace(/,/g, '')}`;
+
+          return `${dataStr},${horaStr},${tipo.replace(/,/g, '')},${destino.replace(/,/g, '')}`;
       }).join("\n");
 
       const csvContent = "data:text/csv;charset=utf-8," + headers + rows;
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `detalhado_analisecard_${profileData.alias}.csv`);
+      link.setAttribute("download", `analisecardpro_${profileData.alias}_relatorio.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -285,6 +293,19 @@ const Dashboard: React.FC = () => {
              <div className="space-y-4">
                  <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} placeholder="Seu Nome Completo" className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-bold shadow-sm" />
                  <input type="text" value={profileData.title} onChange={(e) => setProfileData({...profileData, title: e.target.value})} placeholder="Cargo ou Especialidade" className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-bold shadow-sm" />
+                 
+                 {/* Novos Campos de Documento (Ex: CRECI) */}
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Tipo de Registro</label>
+                        <input type="text" value={profileData.document?.label || ''} onChange={(e) => setProfileData({...profileData, document: { ...profileData.document, label: e.target.value }})} placeholder="Ex: CRECI, OAB" className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-bold shadow-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Número</label>
+                        <input type="text" value={profileData.document?.value || ''} onChange={(e) => setProfileData({...profileData, document: { ...profileData.document, value: e.target.value }})} placeholder="000.000-0" className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-bold shadow-sm" />
+                    </div>
+                 </div>
+
                  <textarea rows={3} value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} placeholder="Sua bio profissional rápida..." className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-medium resize-none shadow-sm" />
              </div>
          </section>
@@ -436,7 +457,7 @@ const Dashboard: React.FC = () => {
                 onClick={exportCSV}
                 className="w-full bg-zinc-900 hover:bg-zinc-800 text-brand-cyan text-[10px] font-black py-5 rounded-2xl uppercase tracking-[0.15em] flex items-center justify-center gap-3 border border-brand-cyan/20 transition-all shadow-xl"
              >
-                <i className="fa-solid fa-file-csv text-xl"></i> Exportar Relatório Detalhado (7 dias)
+                <i className="fa-solid fa-file-csv text-xl"></i> Exportar Relatório (data, hora, tipo, destino)
              </button>
          </section>
       </div>
