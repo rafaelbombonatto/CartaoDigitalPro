@@ -6,6 +6,7 @@ import ProfileHeader from './ProfileHeader';
 import ActionButton from './ActionButton';
 import SaveContactButton from './SaveContactButton';
 import Footer from './Footer';
+import Logo from './Logo';
 import { ProfileData, QuickAction, SocialLink } from '../types';
 import { getProfileByAlias, supabase } from '../lib/supabase';
 import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS } from '../constants';
@@ -113,7 +114,8 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         profile_id: userId,
         action_type: type,
         action_label: action.label,
-        source: 'card'
+        source: 'card',
+        created_at: new Date().toISOString()
       }).then(({error}) => error && console.error(error));
     }
 
@@ -133,7 +135,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
   useEffect(() => {
     const root = document.documentElement;
-    const color = profileData.themeColor || "#D4AF37";
+    const color = profileData.themeColor || "#00E5FF";
     root.style.setProperty('--theme-color', color);
     root.style.setProperty('--theme-color-dark', adjustColor(color, -40)); 
     root.style.setProperty('--theme-color-light', adjustColor(color, 40));
@@ -170,19 +172,19 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       }
   };
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-12 h-12 border-4 border-gold border-t-transparent rounded-full animate-spin"></div></div>;
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-12 h-12 border-4 border-brand-cyan border-t-transparent rounded-full animate-spin"></div></div>;
 
   if (error) return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
         <h1 className="text-2xl font-black mb-2 uppercase tracking-tighter">Perfil não encontrado</h1>
-        <button onClick={() => navigate('/')} className="bg-gold text-black font-black px-8 py-4 rounded-2xl uppercase text-xs tracking-widest shadow-lg shadow-gold/20">Criar meu cartão</button>
+        <button onClick={() => navigate('/')} className="bg-brand-cyan text-black font-black px-8 py-4 rounded-2xl uppercase text-xs tracking-widest shadow-lg shadow-brand-cyan/20">Criar meu cartão</button>
     </div>
   );
 
   return (
     <>
       <Background imageUrl={profileData.backgroundUrl} />
-      {isDemo && <div className="fixed top-0 left-0 w-full bg-indigo-600 text-white text-center text-[10px] font-black py-2 z-[100] tracking-widest uppercase">Modo Demonstração AnaliseCardPro</div>}
+      {isDemo && <div className="fixed top-0 left-0 w-full bg-brand-blue text-white text-center text-[10px] font-black py-2 z-[100] tracking-widest uppercase">Modo Demonstração AnaliseCardPro</div>}
       
       <main className={`min-h-screen w-full flex flex-col items-center justify-center p-4 relative z-10 pb-20 animate-fade-in ${isDemo ? 'pt-14' : ''}`}>
         <div className="w-full max-w-[420px] bg-white/5 dark:bg-black/40 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-2xl p-6 sm:p-10 flex flex-col items-center relative overflow-hidden">
@@ -205,15 +207,14 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
           <footer className="mt-8 pt-8 border-t border-white/5 w-full">
             <div className="flex justify-center gap-6 mb-8">
                 {socialLinks.filter(l => l.url && l.url !== '#').map((link, idx) => (
-                <button key={idx} onClick={() => handleActionClick(link, 'social')} className="text-zinc-400 hover:text-gold transition-all transform hover:scale-125">
+                <button key={idx} onClick={() => handleActionClick(link, 'social')} className="text-zinc-400 hover:text-brand-cyan transition-all transform hover:scale-125">
                     <i className={`${link.icon} text-2xl`}></i>
                 </button>
                 ))}
             </div>
-            <div className="flex flex-col items-center opacity-20 hover:opacity-100 transition-opacity">
-                <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-gold flex items-center justify-center font-black text-black text-[6px]">ACP</div>
-                    <span className="text-[9px] text-white uppercase tracking-[0.3em] font-black">AnaliseCard<span className="text-gold">Pro</span></span>
+            <div className="flex flex-col items-center opacity-30 hover:opacity-100 transition-opacity">
+                <a href="/" onClick={(e) => { e.preventDefault(); navigate('/'); }} className="scale-75 origin-center">
+                    <Logo size="sm" />
                 </a>
             </div>
           </footer>
