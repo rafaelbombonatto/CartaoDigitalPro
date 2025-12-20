@@ -58,6 +58,7 @@ const Dashboard: React.FC = () => {
 
   const fetchAnalytics = async (userId: string) => {
       // Definimos o período de 7 dias
+      const now = new Date();
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setHours(0, 0, 0, 0);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
@@ -75,29 +76,45 @@ const Dashboard: React.FC = () => {
       const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       
       // 1. Agrupamento Diário Inteligente (Chave por Data YYYY-MM-DD para evitar duplicidade de nomes de dias)
-      const dailyMap = new Map();
-      for (let i = 0; i < 7; i++) {
-          const d = new Date();
-          // Ajuste para considerar o dia no fuso GMT-3
-          d.setHours(d.getHours() - 3);
-          d.setDate(d.getDate() - i);
-          const dateKey = d.toISOString().split('T')[0];
-          dailyMap.set(dateKey, { name: dayNames[d.getDay()], cliques: 0 });
-      }
+      const dailyMap: Record<string, number> = {};
 
-      data.forEach(click => {
-          const clickDate = new Date(click.created_at);
-          // Ajuste GMT-3 para garantir que o clique caia no dia correto de Brasília
-          clickDate.setHours(clickDate.getHours() - 3);
-          const dateKey = clickDate.toISOString().split('T')[0];
-          
-          if (dailyMap.has(dateKey)) {
-              dailyMap.get(dateKey).cliques += 1;
-          }
-      });
+     for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const key = `${yyyy}-${mm}-${dd}`;
+    dailyMap[key] = 0;
+  }
+    
+     data.forEach(click => {
+    const utc = new Date(click.created_at);
 
-      const formattedDaily = Array.from(dailyMap.values()).reverse();
-      setDailyData(formattedDaily);
+    // converte para horário de Brasília sem somar duplo:
+    const local = new Date(
+      utc.getTime() + (now.getTimezoneOffset() * -1 + 180) * 60000
+    );
+    // se você já está em GMT-3 no browser, pode usar direto new Date(click.created_at) sem esse cálculo.
+
+    const yyyy = local.getFullYear();
+    const mm = String(local.getMonth() + 1).padStart(2, '0');
+    const dd = String(local.getDate()).padStart(2, '0');
+    const key = `${yyyy}-${mm}-${dd}`;
+
+    if (dailyMap[key] !== undefined) {
+      dailyMap[key] += 1;
+    }
+  });
+
+      const dates = Object.keys(dailyMap).sort(); // crescente
+    const formattedDaily = dates.map(dateKey => {
+        const d = new Date(dateKey + 'T00:00:00');
+        const name = dayNames[d.getDay()];
+        return { name, cliques: dailyMap[dateKey] };
+    });
+
+  setDailyData(formattedDaily);
 
       // 2. Agrupamento por Rótulo de Botão
       const labelMap: Record<string, number> = {};
