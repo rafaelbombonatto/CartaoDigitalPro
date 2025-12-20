@@ -26,22 +26,21 @@ const Dashboard: React.FC = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   
-  // Estados de Analytics
+  // Estados de Analytics Reais
   const [dailyData, setDailyData] = useState<any[]>([]);
   const [labelData, setLabelData] = useState<any[]>([]);
   const [totalClicks, setTotalClicks] = useState(0);
 
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
-  const hasLoadedInitialData = useRef(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
       setSession(initialSession);
-      if (initialSession && !hasLoadedInitialData.current) {
+      if (initialSession) {
           fetchProfile(initialSession.user.id);
           fetchAnalytics(initialSession.user.id);
-      } else if (!initialSession) {
+      } else {
           setLoadingProfile(false);
       }
     });
@@ -52,8 +51,6 @@ const Dashboard: React.FC = () => {
           if (currentSession) {
               fetchProfile(currentSession.user.id);
               fetchAnalytics(currentSession.user.id);
-          } else {
-              setLoadingProfile(false);
           }
       }
     });
@@ -62,7 +59,8 @@ const Dashboard: React.FC = () => {
 
   const fetchAnalytics = async (userId: string) => {
       const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
       const { data, error } = await supabase
         .from('profiles_clicks')
@@ -74,26 +72,32 @@ const Dashboard: React.FC = () => {
 
       setTotalClicks(data.length);
 
-      // Processar dados diários
-      const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-      const dailyMap: any = {};
+      // 1. Processamento de dados diários (Fuso horário local)
+      const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      const dailyMap = new Map();
       
-      // Inicializar últimos 7 dias com zero
+      // Inicializa os últimos 7 dias com 0
       for (let i = 0; i < 7; i++) {
           const d = new Date();
           d.setDate(d.getDate() - i);
-          dailyMap[days[d.getDay()]] = 0;
+          const name = dayNames[d.getDay()];
+          dailyMap.set(name, 0);
       }
 
       data.forEach(click => {
-          const dayName = days[new Date(click.created_at).getDay()];
-          if (dailyMap[dayName] !== undefined) dailyMap[dayName]++;
+          const clickDate = new Date(click.created_at);
+          const name = dayNames[clickDate.getDay()];
+          if (dailyMap.has(name)) {
+              dailyMap.set(name, dailyMap.get(name) + 1);
+          }
       });
 
-      const formattedDaily = Object.keys(dailyMap).map(key => ({ name: key, clicks: dailyMap[key] })).reverse();
+      const formattedDaily = Array.from(dailyMap.entries())
+        .map(([name, cliques]) => ({ name, cliques }))
+        .reverse();
       setDailyData(formattedDaily);
 
-      // Processar cliques por label
+      // 2. Processamento por Rótulo (Botão)
       const labelMap: any = {};
       data.forEach(click => {
           const label = click.action_label || 'Outros';
@@ -101,8 +105,8 @@ const Dashboard: React.FC = () => {
       });
 
       const formattedLabels = Object.keys(labelMap)
-        .map(key => ({ name: key, value: labelMap[key] }))
-        .sort((a, b) => b.value - a.value);
+        .map(key => ({ name: key, cliques: labelMap[key] }))
+        .sort((a, b) => b.cliques - a.cliques);
       setLabelData(formattedLabels);
   };
 
@@ -118,10 +122,6 @@ const Dashboard: React.FC = () => {
           setProfileData(profile);
           if (content.actions) setQuickActions(content.actions);
           if (content.links) setSocialLinks(content.links);
-      }
-      if (new URLSearchParams(window.location.search).get('upgrade') === 'success') {
-          setShowSuccessToast(true);
-          window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch (err) {
       console.error(err);
@@ -162,16 +162,17 @@ const Dashboard: React.FC = () => {
   };
 
   const exportCSV = () => {
-      if (dailyData.length === 0) return alert("Sem dados para exportar ainda.");
+      if (labelData.length === 0) return alert("Sem dados para exportar ainda.");
       const csvContent = "data:text/csv;charset=utf-8," 
-          + "Label,Cliques\n" 
-          + labelData.map(e => `${e.name},${e.value}`).join("\n");
+          + "Botão,Cliques\n" 
+          + labelData.map(e => `${e.name},${e.cliques}`).join("\n");
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
       link.setAttribute("download", `relatorio_analisecard_${profileData.alias}.csv`);
       document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
   };
 
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`${window.location.origin}/${profileData.alias}`)}`;
@@ -350,10 +351,10 @@ const Dashboard: React.FC = () => {
              </div>
          </section>
 
-         {/* 7. Analytics Real */}
-         <section className="bg-zinc-900 border border-white/5 p-6 rounded-[2rem] shadow-2xl overflow-hidden">
+         {/* 7. Analytics Real corrigido */}
+         <section className="bg-zinc-950 border border-white/5 p-6 rounded-[2.5rem] shadow-2xl overflow-hidden">
             <h2 className="text-[10px] font-black text-gold uppercase mb-6 tracking-widest flex items-center gap-2">
-                <i className="fa-solid fa-eye"></i> Desempenho Real (7 dias)
+                <i className="fa-solid fa-eye"></i> Desempenho Real (Últimos 7 dias)
             </h2>
             
             <div className="h-48 w-full mb-8">
@@ -365,25 +366,33 @@ const Dashboard: React.FC = () => {
                                 <stop offset="95%" stopColor="#D4AF37" stopOpacity={0}/>
                             </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                        <XAxis dataKey="name" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                        <XAxis dataKey="name" stroke="#555" fontSize={10} tickLine={false} axisLine={false} />
                         <YAxis hide />
-                        <Tooltip contentStyle={{ background: '#111', border: '1px solid #333', fontSize: '10px' }} />
-                        <Area type="monotone" dataKey="clicks" stroke="#D4AF37" strokeWidth={3} fillOpacity={1} fill="url(#colorClicks)" />
+                        <Tooltip 
+                            labelFormatter={(label) => `Dia: ${label}`}
+                            formatter={(value) => [`${value} cliques`, "Cliques"]}
+                            contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: '12px', fontSize: '10px' }} 
+                        />
+                        <Area type="monotone" dataKey="cliques" stroke="#D4AF37" strokeWidth={3} fillOpacity={1} fill="url(#colorClicks)" />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
 
-            <h3 className="text-[9px] font-black text-gray-500 uppercase mb-4 tracking-widest">Top Cliques por Botão</h3>
-            <div className="h-48 w-full mb-6">
+            <h3 className="text-[9px] font-black text-gray-500 uppercase mb-4 tracking-widest">Cliques por Botão</h3>
+            <div className="h-56 w-full mb-6">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={labelData} layout="vertical">
+                    <BarChart data={labelData} layout="vertical" margin={{ left: -20, right: 20 }}>
                         <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" stroke="#999" fontSize={8} width={80} />
-                        <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ background: '#111', border: 'none', fontSize: '9px' }} />
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        <YAxis dataKey="name" type="category" stroke="#999" fontSize={8} width={100} tickLine={false} axisLine={false} />
+                        <Tooltip 
+                            cursor={{fill: 'rgba(255,255,255,0.02)'}} 
+                            formatter={(value) => [`${value} cliques`, "Total"]}
+                            contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: '12px', fontSize: '9px' }} 
+                        />
+                        <Bar dataKey="cliques" radius={[0, 4, 4, 0]} barSize={20}>
                             {labelData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={index === 0 ? '#D4AF37' : '#333'} />
+                                <Cell key={`cell-${index}`} fill={entry.cliques > 0 ? '#D4AF37' : '#333'} />
                             ))}
                         </Bar>
                     </BarChart>
@@ -391,15 +400,15 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-                <div className="bg-black/40 p-4 rounded-2xl border border-white/5">
-                    <div className="text-[8px] text-gray-500 font-bold uppercase tracking-widest">Total Geral</div>
-                    <div className="text-xl font-black text-white">{totalClicks}</div>
+                <div className="bg-black/40 p-5 rounded-2xl border border-white/5 flex flex-col justify-center">
+                    <div className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-1">Total da Semana</div>
+                    <div className="text-2xl font-black text-white">{totalClicks}</div>
                 </div>
                 <button 
                   onClick={exportCSV}
-                  className="bg-zinc-800 hover:bg-zinc-700 text-white text-[9px] font-black p-4 rounded-2xl uppercase tracking-widest flex items-center justify-center gap-2"
+                  className="bg-zinc-900 hover:bg-zinc-800 text-white text-[9px] font-black p-5 rounded-2xl uppercase tracking-widest flex items-center justify-center gap-2 border border-white/5 transition-all"
                 >
-                    <i className="fa-solid fa-file-csv text-gold"></i> EXPORTAR CSV
+                    <i className="fa-solid fa-file-csv text-gold"></i> EXPORTAR RELATÓRIO
                 </button>
             </div>
          </section>
