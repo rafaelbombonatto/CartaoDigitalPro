@@ -109,13 +109,13 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
     }
 
     if (userId) {
-      // GRAVAÇÃO COM FUSO HORÁRIO EXPLÍCITO
+      // Envia o clique com timestamp UTC do servidor (default do Supabase) ou local ISO
       supabase.from('profiles_clicks').insert({
         profile_id: userId,
         action_type: type,
         action_label: action.label,
         source: 'card',
-        created_at: new Date().toISOString() // Envia o tempo exato do navegador
+        created_at: new Date().toISOString()
       }).then(({error}) => error && console.error(error));
     }
 
