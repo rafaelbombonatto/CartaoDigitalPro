@@ -109,13 +109,11 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
     }
 
     if (userId) {
-      // Envia o clique com timestamp UTC do servidor (default do Supabase) ou local ISO
       supabase.from('profiles_clicks').insert({
         profile_id: userId,
         action_type: type,
         action_label: action.label,
-        source: 'card',
-        created_at: new Date().toISOString()
+        source: 'card'
       }).then(({error}) => error && console.error(error));
     }
 
