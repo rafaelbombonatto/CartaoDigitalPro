@@ -26,7 +26,6 @@ const Dashboard: React.FC = () => {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   
-  // Estados de Analytics Reais
   const [dailyData, setDailyData] = useState<any[]>([]);
   const [labelData, setLabelData] = useState<any[]>([]);
   const [totalClicks, setTotalClicks] = useState(0);
@@ -58,6 +57,7 @@ const Dashboard: React.FC = () => {
   }, [session?.user?.id]);
 
   const fetchAnalytics = async (userId: string) => {
+      const now = new Date();
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setHours(0, 0, 0, 0);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
@@ -72,13 +72,14 @@ const Dashboard: React.FC = () => {
 
       setTotalClicks(data.length);
 
-      // 1. Processamento de dados diários (Fuso horário local)
       const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       const dailyMap = new Map();
       
-      // Inicializa os últimos 7 dias com 0
+      // Inicializar dias considerando GMT-3
       for (let i = 0; i < 7; i++) {
           const d = new Date();
+          // Ajuste para GMT-3 na inicialização dos rótulos
+          d.setHours(d.getHours() - 3); 
           d.setDate(d.getDate() - i);
           const name = dayNames[d.getDay()];
           dailyMap.set(name, 0);
@@ -86,6 +87,8 @@ const Dashboard: React.FC = () => {
 
       data.forEach(click => {
           const clickDate = new Date(click.created_at);
+          // FORÇA O AJUSTE PARA GMT-3 ANTES DE CONTABILIZAR NO GRÁFICO
+          clickDate.setHours(clickDate.getHours() - 3); 
           const name = dayNames[clickDate.getDay()];
           if (dailyMap.has(name)) {
               dailyMap.set(name, dailyMap.get(name) + 1);
@@ -97,7 +100,6 @@ const Dashboard: React.FC = () => {
         .reverse();
       setDailyData(formattedDaily);
 
-      // 2. Processamento por Rótulo (Botão)
       const labelMap: any = {};
       data.forEach(click => {
           const label = click.action_label || 'Outros';
@@ -351,10 +353,10 @@ const Dashboard: React.FC = () => {
              </div>
          </section>
 
-         {/* 7. Analytics Real corrigido */}
+         {/* 7. Analytics Real com Ajuste GMT-3 */}
          <section className="bg-zinc-950 border border-white/5 p-6 rounded-[2.5rem] shadow-2xl overflow-hidden">
             <h2 className="text-[10px] font-black text-gold uppercase mb-6 tracking-widest flex items-center gap-2">
-                <i className="fa-solid fa-eye"></i> Desempenho Real (Últimos 7 dias)
+                <i className="fa-solid fa-eye"></i> Desempenho Real (GMT-3)
             </h2>
             
             <div className="h-48 w-full mb-8">
@@ -371,8 +373,10 @@ const Dashboard: React.FC = () => {
                         <YAxis hide />
                         <Tooltip 
                             labelFormatter={(label) => `Dia: ${label}`}
-                            formatter={(value) => [`${value} cliques`, "Cliques"]}
-                            contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: '12px', fontSize: '10px' }} 
+                            formatter={(value) => [`${value} cliques`, "Total"]}
+                            contentStyle={{ background: '#000', border: '1px solid #D4AF37', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }} 
+                            itemStyle={{ color: '#D4AF37' }} // NOME EM OURO
+                            labelStyle={{ color: '#D4AF37', marginBottom: '4px' }} // VALOR EM OURO
                         />
                         <Area type="monotone" dataKey="cliques" stroke="#D4AF37" strokeWidth={3} fillOpacity={1} fill="url(#colorClicks)" />
                     </AreaChart>
@@ -380,17 +384,19 @@ const Dashboard: React.FC = () => {
             </div>
 
             <h3 className="text-[9px] font-black text-gray-500 uppercase mb-4 tracking-widest">Cliques por Botão</h3>
-            <div className="h-56 w-full mb-6">
+            <div className="h-64 w-full mb-6">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={labelData} layout="vertical" margin={{ left: -20, right: 20 }}>
+                    <BarChart data={labelData} layout="vertical" margin={{ left: 10, right: 30 }}>
                         <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" stroke="#999" fontSize={8} width={100} tickLine={false} axisLine={false} />
+                        <YAxis dataKey="name" type="category" stroke="#999" fontSize={9} width={100} tickLine={false} axisLine={false} />
                         <Tooltip 
                             cursor={{fill: 'rgba(255,255,255,0.02)'}} 
-                            formatter={(value) => [`${value} cliques`, "Total"]}
-                            contentStyle={{ background: '#000', border: '1px solid #333', borderRadius: '12px', fontSize: '9px' }} 
+                            formatter={(value) => [`${value} cliques`, "Cliques"]}
+                            contentStyle={{ background: '#000', border: '1px solid #D4AF37', borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}
+                            itemStyle={{ color: '#D4AF37' }} // NOME EM OURO
+                            labelStyle={{ color: '#D4AF37', marginBottom: '4px' }} // VALOR EM OURO
                         />
-                        <Bar dataKey="cliques" radius={[0, 4, 4, 0]} barSize={20}>
+                        <Bar dataKey="cliques" radius={[0, 4, 4, 0]} barSize={24}>
                             {labelData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.cliques > 0 ? '#D4AF37' : '#333'} />
                             ))}
