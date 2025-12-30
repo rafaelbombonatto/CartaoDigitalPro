@@ -34,7 +34,6 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
-  const [isExpired, setIsExpired] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   const [profileData, setProfileData] = useState<ProfileData>(DEFAULT_PROFILE);
@@ -55,6 +54,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       return quickActions.filter(isActionValid);
   }, [quickActions, isDemo]);
 
+  // Scripts de Marketing (Pixel/GA4)
   useEffect(() => {
     if (loading || error || isDemo) return;
 
@@ -144,24 +144,36 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
   const loadProfile = async (alias: string) => {
       try {
-        const { data, error } = await getProfileByAlias(alias);
-        if (error || !data) {
+        const { data, error: dbError } = await getProfileByAlias(alias);
+        if (dbError || !data) {
             setError(true);
-        } else if (data.content) {
-            setUserId(data.id);
+            setLoading(false);
+            return;
+        }
+
+        if (data.content) {
             const content = data.content;
-            if (content.profile) {
-                const profile = content.profile as ProfileData;
-                setProfileData({
-                    ...profile,
-                    isPremium: !!profile.isPremium,
-                    createdAt: profile.createdAt || data.created_at || new Date().toISOString()
-                });
-                if (!profile.isPremium) {
-                    const trialEnd = new Date(new Date(profile.createdAt || data.created_at).getTime() + 7 * 24 * 60 * 60 * 1000); 
-                    if (new Date() > trialEnd) setIsExpired(true);
-                }
+            const profile = content.profile as ProfileData;
+            const dbCreatedAt = data.created_at;
+            
+            const isPremium = !!profile.isPremium;
+            const createdAt = new Date(profile.createdAt || dbCreatedAt);
+            const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); 
+            
+            // Regra Crítica: Se não for premium e o tempo acabou, simulamos erro de "não localizado"
+            if (!isPremium && new Date() > trialEnd) {
+                setError(true);
+                setLoading(false);
+                return;
             }
+
+            setUserId(data.id);
+            setProfileData({
+                ...profile,
+                isPremium,
+                createdAt: createdAt.toISOString()
+            });
+
             if (content.actions) setQuickActions(content.actions);
             if (content.links) setSocialLinks(content.links);
         }
@@ -176,8 +188,12 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
   if (error) return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
-        <h1 className="text-2xl font-black mb-2 uppercase tracking-tighter">Perfil não encontrado</h1>
-        <button onClick={() => navigate('/')} className="bg-brand-cyan text-black font-black px-8 py-4 rounded-2xl uppercase text-xs tracking-widest shadow-lg shadow-brand-cyan/20">Criar meu cartão</button>
+        <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 text-zinc-600">
+            <i className="fa-solid fa-magnifying-glass text-2xl"></i>
+        </div>
+        <h1 className="text-xl font-black mb-2 uppercase tracking-[0.2em] text-zinc-400">Cartão não localizado</h1>
+        <p className="text-zinc-600 text-xs mb-8 max-w-[240px]">O endereço solicitado não existe ou foi removido pelo proprietário.</p>
+        <button onClick={() => navigate('/')} className="bg-white/5 hover:bg-white/10 text-zinc-500 font-bold px-8 py-3 rounded-xl uppercase text-[10px] tracking-widest transition-all">Criar meu cartão</button>
     </div>
   );
 
@@ -193,12 +209,12 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
           <div className="w-full grid grid-cols-2 gap-4 mb-4">
             {visibleActions.map((action, index) => {
-              const isLastAndOdd = visibleActions.length % 2 !== 0 && index === visibleActions.length - 1;
-              return (
+                const isLastAndOdd = visibleActions.length % 2 !== 0 && index === visibleActions.length - 1;
+                return (
                 <div key={index} className={isLastAndOdd ? 'col-span-2' : ''} onClick={(e) => { e.preventDefault(); handleActionClick(action, action.type); }}>
-                  <ActionButton action={action} index={index} isDemo={isDemo} />
+                    <ActionButton action={action} index={index} isDemo={isDemo} />
                 </div>
-              );
+                );
             })}
           </div>
 

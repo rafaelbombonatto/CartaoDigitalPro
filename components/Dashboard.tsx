@@ -119,7 +119,8 @@ const Dashboard: React.FC = () => {
           let profile = content.profile || { ...DEFAULT_PROFILE };
           profile.isPremium = !!profile.isPremium;
           profile.alias = data.alias || profile.alias;
-          // Garantir estrutura do documento
+          profile.createdAt = profile.createdAt || data.created_at;
+          
           if (!profile.document) profile.document = { label: '', value: '' };
           setProfileData(profile);
           if (content.actions) setQuickActions(content.actions);
@@ -165,25 +166,16 @@ const Dashboard: React.FC = () => {
 
   const exportCSV = () => {
       if (rawClicks.length === 0) return alert("Sem dados para exportar ainda.");
-      
       const headers = "data,hora,tipo,destino\n";
-      
       const rows = rawClicks.map(click => {
           const date = new Date(click.created_at);
           date.setHours(date.getHours() - 3); 
-          
           const dataStr = date.toLocaleDateString('pt-BR');
-          const horaStr = date.toLocaleTimeString('pt-BR', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-          });
-
+          const horaStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
           const tipo = click.action_type || 'desconhecido';
           const destino = click.action_label || 'sem_nome';
-
           return `${dataStr},${horaStr},${tipo.replace(/,/g, '')},${destino.replace(/,/g, '')}`;
       }).join("\n");
-
       const csvContent = "data:text/csv;charset=utf-8," + headers + rows;
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
@@ -224,9 +216,16 @@ const Dashboard: React.FC = () => {
   if (!session) return <div className="min-h-screen bg-black flex items-center justify-center p-4"><Auth /></div>;
   if (loadingProfile) return <div className="min-h-screen flex items-center justify-center bg-black"><div className="w-12 h-12 border-4 border-brand-cyan border-t-transparent rounded-full animate-spin"></div></div>;
 
+  // Lógica de Expiração (Exatamente igual ao PublicCard)
+  const createdAt = profileData.createdAt ? new Date(profileData.createdAt) : new Date();
+  const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const isExpired = !profileData.isPremium && new Date() > trialEnd;
+
   const status = profileData.isPremium 
     ? { label: 'PRO VITALÍCIO', color: 'bg-brand-cyan text-black shadow-lg', icon: 'fa-crown' }
-    : { label: `TESTE ATIVO`, color: 'bg-zinc-800 text-brand-cyan border border-brand-cyan/30', icon: 'fa-clock' };
+    : isExpired 
+      ? { label: 'TESTE EXPIRADO', color: 'bg-red-500 text-white shadow-lg shadow-red-500/20', icon: 'fa-triangle-exclamation' }
+      : { label: `TESTE ATIVO`, color: 'bg-zinc-800 text-brand-cyan border border-brand-cyan/30', icon: 'fa-clock' };
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white pb-40 transition-colors duration-500">
@@ -235,7 +234,7 @@ const Dashboard: React.FC = () => {
       <header className="fixed top-0 w-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 z-50 h-20 flex items-center justify-between px-4 sm:px-6">
         <Logo size="sm" />
         <div className="flex items-center gap-3">
-             <button onClick={() => !profileData.isPremium && setShowPremiumModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-[8px] font-black tracking-widest ${status.color}`}>
+             <button onClick={() => setShowPremiumModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-[8px] font-black tracking-widest ${status.color}`}>
                 <i className={`fa-solid ${status.icon}`}></i> <span>{status.label}</span>
              </button>
              <button onClick={() => window.open(`/${profileData.alias}`, '_blank')} className="text-[10px] font-black px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-brand-cyan uppercase tracking-widest">Ver Card</button>
@@ -245,7 +244,6 @@ const Dashboard: React.FC = () => {
 
       <div className="pt-28 px-4 max-w-xl mx-auto space-y-10">
          
-         {/* 1. Endereço Digital */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm">
             <h2 className="text-[10px] font-black text-brand-blue uppercase mb-4 tracking-[0.2em] ml-1">1. Endereço Digital</h2>
             <div className="flex items-center gap-1 bg-white dark:bg-black rounded-2xl border border-gray-200 dark:border-zinc-800 p-1 group focus-within:border-brand-cyan transition-all shadow-sm">
@@ -269,7 +267,6 @@ const Dashboard: React.FC = () => {
             </div>
          </section>
 
-         {/* 2. Aparência & Identidade */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-6">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1">2. Aparência & Identidade</h2>
              <div className="grid grid-cols-2 gap-4">
@@ -293,8 +290,6 @@ const Dashboard: React.FC = () => {
              <div className="space-y-4">
                  <input type="text" value={profileData.name} onChange={(e) => setProfileData({...profileData, name: e.target.value})} placeholder="Seu Nome Completo" className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-bold shadow-sm" />
                  <input type="text" value={profileData.title} onChange={(e) => setProfileData({...profileData, title: e.target.value})} placeholder="Cargo ou Especialidade" className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-bold shadow-sm" />
-                 
-                 {/* Novos Campos de Documento (Ex: CRECI) */}
                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                         <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Tipo de Registro</label>
@@ -302,15 +297,13 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="space-y-1.5">
                         <label className="text-[9px] font-black text-zinc-500 uppercase tracking-widest ml-1">Número</label>
-                        <input type="text" value={profileData.document?.value || ''} onChange={(e) => setProfileData({...profileData, document: { ...profileData.document, value: e.target.value }})} placeholder="000.000-0" className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-bold shadow-sm" />
+                        <input type="text" value={profileData.document?.value || ''} onChange={(e) => setProfileData({...profileData, document: { ...profileData.document, value: e.target.value }})} placeholder="000.000-0" className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-700 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-bold shadow-sm" />
                     </div>
                  </div>
-
                  <textarea rows={3} value={profileData.bio} onChange={(e) => setProfileData({...profileData, bio: e.target.value})} placeholder="Sua bio profissional rápida..." className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-xs font-medium resize-none shadow-sm" />
              </div>
          </section>
 
-         {/* 3. Canais de Atendimento */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-4">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1">3. Canais de Atendimento</h2>
              {quickActions.map((action, idx) => (
@@ -327,7 +320,6 @@ const Dashboard: React.FC = () => {
              ))}
          </section>
 
-         {/* 4. Redes Sociais */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-4">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1">4. Redes Sociais</h2>
              {socialLinks.map((link, idx) => (
@@ -340,13 +332,12 @@ const Dashboard: React.FC = () => {
                         value={link.url} 
                         onChange={(e) => handleSocialChange(idx, e.target.value)} 
                         placeholder={`URL do ${link.label}`}
-                        className="flex-1 bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-3.5 rounded-xl outline-none focus:border-brand-cyan text-[10px] font-bold shadow-sm" 
+                        className="flex-1 bg-white dark:bg-black border border-gray-200 dark:border-zinc-700 p-3.5 rounded-xl outline-none focus:border-brand-cyan text-[10px] font-bold shadow-sm" 
                     />
                  </div>
              ))}
          </section>
 
-         {/* 5. QR Code */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-8 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm flex flex-col items-center">
              <h2 className="text-[10px] font-black text-brand-blue uppercase mb-6 tracking-[0.2em]">5. QR Code de Impressão</h2>
              <div className="bg-white p-4 rounded-[2.5rem] shadow-2xl mb-6 border border-brand-cyan/20 ring-8 ring-brand-cyan/5">
@@ -356,7 +347,6 @@ const Dashboard: React.FC = () => {
              <button onClick={() => window.open(qrCodeUrl, '_blank')} className="bg-white dark:bg-zinc-800 text-black dark:text-white text-[10px] font-black py-4 px-8 rounded-2xl border border-gray-200 dark:border-zinc-700 shadow-md hover:scale-105 transition-all uppercase tracking-widest">Download Alta Resolução</button>
          </section>
 
-         {/* 6. Marketing & Analytics PRO */}
          <section className="bg-zinc-950 p-6 rounded-[2rem] border border-white/5 shadow-2xl space-y-5">
              <h2 className="text-[10px] font-black text-brand-cyan uppercase tracking-[0.2em] flex items-center gap-2">
                 <i className="fa-solid fa-rocket"></i> 6. Marketing & Analytics PRO
@@ -388,7 +378,6 @@ const Dashboard: React.FC = () => {
              </div>
          </section>
 
-         {/* 7. Gráfico de Cliques por Botão */}
          <section className="bg-zinc-950 p-6 rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
             <h2 className="text-[10px] font-black text-brand-cyan uppercase mb-6 tracking-widest flex items-center gap-2">
                 <i className="fa-solid fa-list-check"></i> 7. Conversão por Botão
@@ -415,7 +404,6 @@ const Dashboard: React.FC = () => {
             </div>
          </section>
 
-         {/* 8. Gráfico Últimos 7 Dias */}
          <section className="bg-zinc-950 p-6 rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
             <h2 className="text-[10px] font-black text-brand-cyan uppercase mb-6 tracking-widest flex items-center gap-2">
                 <i className="fa-solid fa-chart-line"></i> 8. Volume nos Últimos 7 Dias
@@ -449,7 +437,6 @@ const Dashboard: React.FC = () => {
             </div>
          </section>
 
-         {/* 9. Botão de Exportação */}
          <section className="bg-white dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 space-y-4 shadow-sm text-center">
              <h2 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">9. Extração de Dados Profissional</h2>
              <p className="text-[11px] text-zinc-500 max-w-xs mx-auto mb-4 font-medium leading-relaxed">Baixe o relatório detalhado linha a linha para análise de ROI em planilhas externas.</p>
