@@ -25,7 +25,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   },
   {
     icon: "fa-solid fa-location-dot",
-    label: "Escritório",
+    label: "Localização",
     url: "https://maps.google.com",
     type: "map"
   },

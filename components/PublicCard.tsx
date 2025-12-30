@@ -206,7 +206,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
           <footer className="mt-8 pt-8 border-t border-white/5 w-full">
             <div className="flex justify-center gap-6 mb-8">
-                {socialLinks.filter(l => l.url && l.url !== '#').map((link, idx) => (
+                {socialLinks.filter(l => isDemo || (l.url && l.url !== '#')).map((link, idx) => (
                 <button key={idx} onClick={() => handleActionClick(link, 'social')} className="text-zinc-400 hover:text-brand-cyan transition-all transform hover:scale-125">
                     <i className={`${link.icon} text-2xl`}></i>
                 </button>
