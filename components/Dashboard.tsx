@@ -26,7 +26,6 @@ const Dashboard: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   
-  // Estados de Analytics
   const [dailyData, setDailyData] = useState<any[]>([]);
   const [labelData, setLabelData] = useState<any[]>([]);
   const [rawClicks, setRawClicks] = useState<any[]>([]); 
@@ -36,27 +35,27 @@ const Dashboard: React.FC = () => {
   const bgInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      setSession(initialSession);
-      if (initialSession) {
-          fetchProfile(initialSession.user.id);
-          fetchAnalytics(initialSession.user.id);
+    // Sincroniza sessão inicial
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      if (currentSession) {
+          fetchProfile(currentSession.user.id);
+          fetchAnalytics(currentSession.user.id);
       } else {
           setLoadingProfile(false);
       }
     });
 
+    // Escuta mudanças (logout por exemplo)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, currentSession) => {
-      if (currentSession?.user?.id !== session?.user?.id) {
-          setSession(currentSession);
-          if (currentSession) {
-              fetchProfile(currentSession.user.id);
-              fetchAnalytics(currentSession.user.id);
-          }
+      setSession(currentSession);
+      if (event === 'SIGNED_IN' && currentSession) {
+          fetchProfile(currentSession.user.id);
+          fetchAnalytics(currentSession.user.id);
       }
     });
     return () => subscription.unsubscribe();
-  }, [session?.user?.id]);
+  }, []);
 
   const fetchAnalytics = async (userId: string) => {
       const sevenDaysAgo = new Date();
@@ -216,16 +215,15 @@ const Dashboard: React.FC = () => {
   if (!session) return <div className="min-h-screen bg-black flex items-center justify-center p-4"><Auth /></div>;
   if (loadingProfile) return <div className="min-h-screen flex items-center justify-center bg-black"><div className="w-12 h-12 border-4 border-brand-cyan border-t-transparent rounded-full animate-spin"></div></div>;
 
-  // Lógica de Expiração (Exatamente igual ao PublicCard)
   const createdAt = profileData.createdAt ? new Date(profileData.createdAt) : new Date();
   const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000);
   const isExpired = !profileData.isPremium && new Date() > trialEnd;
 
   const status = profileData.isPremium 
-    ? { label: 'PRO VITALÍCIO', color: 'bg-brand-cyan text-black shadow-lg', icon: 'fa-crown' }
+    ? { label: 'PRO VITALÍCIO', color: 'bg-brand-cyan text-black shadow-lg', icon: 'fa-crown', clickable: false }
     : isExpired 
-      ? { label: 'TESTE EXPIRADO', color: 'bg-red-500 text-white shadow-lg shadow-red-500/20', icon: 'fa-triangle-exclamation' }
-      : { label: `TESTE ATIVO`, color: 'bg-zinc-800 text-brand-cyan border border-brand-cyan/30', icon: 'fa-clock' };
+      ? { label: 'TESTE EXPIRADO', color: 'bg-red-500 text-white shadow-lg shadow-red-500/20', icon: 'fa-triangle-exclamation', clickable: true }
+      : { label: `TESTE ATIVO`, color: 'bg-zinc-800 text-brand-cyan border border-brand-cyan/30', icon: 'fa-clock', clickable: true };
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white pb-40 transition-colors duration-500">
@@ -234,7 +232,10 @@ const Dashboard: React.FC = () => {
       <header className="fixed top-0 w-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border-b border-gray-100 dark:border-zinc-800 z-50 h-20 flex items-center justify-between px-4 sm:px-6">
         <Logo size="sm" />
         <div className="flex items-center gap-3">
-             <button onClick={() => setShowPremiumModal(true)} className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-[8px] font-black tracking-widest ${status.color}`}>
+             <button 
+                onClick={() => status.clickable && setShowPremiumModal(true)} 
+                className={`hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full text-[8px] font-black tracking-widest ${status.color} ${status.clickable ? 'cursor-pointer hover:scale-105 active:scale-95 transition-transform' : 'cursor-default'}`}
+             >
                 <i className={`fa-solid ${status.icon}`}></i> <span>{status.label}</span>
              </button>
              <button onClick={() => window.open(`/${profileData.alias}`, '_blank')} className="text-[10px] font-black px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-brand-cyan uppercase tracking-widest">Ver Card</button>
