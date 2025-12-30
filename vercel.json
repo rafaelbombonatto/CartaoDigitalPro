@@ -1,20 +1,8 @@
 {
   "rewrites": [
-    {
-      "source": "/api/auth/:path*",
-      "destination": "https://hoaqohaawgvgzoxsfzyt.supabase.co/auth/v1/:path*"
-    },
-    {
-      "source": "/api/supabase/:path*",
-      "destination": "https://hoaqohaawgvgzoxsfzyt.supabase.co/rest/v1/:path*"
-    },
-    {
-      "source": "/api/realtime/:path*",
-      "destination": "https://hoaqohaawgvgzoxsfzyt.supabase.co/realtime/v1/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/auth/v1/callback", "destination": "https://hoaqohaawgvgzoxsfzyt.supabase.co/auth/v1/callback" },
+    { "source": "/auth/v1/:path*", "destination": "https://hoaqohaawgvgzoxsfzyt.supabase.co/auth/v1/:path*" },
+    { "source": "/rest/v1/:path*", "destination": "https://hoaqohaawgvgzoxsfzyt.supabase.co/rest/v1/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -11,7 +11,6 @@ const Auth: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'error' | 'success' } | null>(null);
 
-  // Função para traduzir erros comuns do Supabase/Auth
   const translateError = (error: any) => {
     const msg = error.message || '';
     if (msg.includes('Password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
@@ -72,11 +71,16 @@ const Auth: React.FC = () => {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setMessage(null);
+    
+    // Captura o domínio atual para garantir que o redirecionamento volte para ele
+    // Ex: analisecardpro.com.br ou localhost ou vercel.app
+    const currentOrigin = window.location.origin;
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${currentOrigin}/dashboard`,
         },
       });
       if (error) throw error;
