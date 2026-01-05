@@ -16,6 +16,21 @@ export const DEFAULT_PROFILE: ProfileData = {
   isPremium: false
 };
 
+export const PRESET_ICONS = [
+  { class: "fa-solid fa-utensils", label: "Cardápio" },
+  { class: "fa-solid fa-calendar-check", label: "Agenda" },
+  { class: "fa-solid fa-briefcase", label: "Portfólio" },
+  { class: "fa-solid fa-bag-shopping", label: "Loja" },
+  { class: "fa-solid fa-video", label: "Cursos/Vídeos" },
+  { class: "fa-solid fa-file-pdf", label: "Documento PDF" },
+  { class: "fa-solid fa-star", label: "Destaque" },
+  { class: "fa-solid fa-tag", label: "Ofertas" },
+  { class: "fa-solid fa-graduation-cap", label: "Educação" },
+  { class: "fa-solid fa-stethoscope", label: "Saúde" },
+  { class: "fa-solid fa-gavel", label: "Jurídico" },
+  { class: "fa-solid fa-house-chimney", label: "Imóveis" }
+];
+
 export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   {
     icon: "fa-brands fa-whatsapp",

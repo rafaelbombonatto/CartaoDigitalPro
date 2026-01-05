@@ -4,7 +4,7 @@ import { ProfileData, QuickAction, SocialLink, UploadPending } from '../types';
 import Auth from './Auth';
 import PremiumModal from './PremiumModal';
 import { supabase, uploadImage, checkAliasAvailability } from '../lib/supabase';
-import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS } from '../constants';
+import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS, PRESET_ICONS } from '../constants';
 import { useRouter } from '../lib/routerContext';
 import Logo from './Logo';
 import { 
@@ -377,33 +377,44 @@ const Dashboard: React.FC = () => {
              ))}
          </section>
 
-         {/* NOVA SEÇÃO: BOTÕES PERSONALIZADOS */}
-         <section className="bg-brand-cyan/5 p-6 rounded-[2rem] border border-brand-cyan/20 shadow-sm space-y-6 relative overflow-hidden">
+         {/* NOVA SEÇÃO: BOTÕES PERSONALIZADOS COM SELETOR DE ÍCONE VISUAL */}
+         <section className="bg-brand-cyan/5 p-6 rounded-[2rem] border border-brand-cyan/20 shadow-sm space-y-8 relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-10">
                 <i className="fa-solid fa-wand-magic-sparkles text-4xl text-brand-cyan"></i>
              </div>
              <h2 className="text-[10px] font-black text-brand-cyan uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                 <i className="fa-solid fa-plus-circle"></i> 4. Botões Personalizados (PRO)
              </h2>
-             <div className="grid grid-cols-1 gap-6">
+             
+             <div className="grid grid-cols-1 gap-8">
                 {customActions.map((action, idx) => (
-                    <div key={idx} className="space-y-3 p-4 bg-white/5 dark:bg-black/40 rounded-2xl border border-white/10">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                                <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Ícone (FA class)</label>
-                                <div className="flex gap-2">
-                                    <div className="w-10 h-10 shrink-0 bg-black rounded-lg flex items-center justify-center text-brand-cyan border border-white/10">
-                                        <i className={action.icon || 'fa-solid fa-star'}></i>
-                                    </div>
-                                    <input 
-                                        type="text" 
-                                        value={action.icon} 
-                                        onChange={(e) => handleCustomActionChange(idx, 'icon', e.target.value)} 
-                                        placeholder="fa-solid fa-utensils"
-                                        className="flex-1 bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-2 rounded-lg outline-none focus:border-brand-cyan text-[10px] font-mono" 
-                                    />
-                                </div>
+                    <div key={idx} className="space-y-4 p-5 bg-white/5 dark:bg-black/40 rounded-3xl border border-white/10 relative">
+                        <div className="absolute -top-3 left-4 bg-brand-cyan text-black text-[8px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                            Botão {idx + 1}
+                        </div>
+                        
+                        {/* Seletor Visual de Ícones */}
+                        <div className="space-y-3">
+                            <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Escolha um Ícone</label>
+                            <div className="grid grid-cols-6 sm:grid-cols-12 gap-2">
+                                {PRESET_ICONS.map((preset) => (
+                                    <button
+                                        key={preset.class}
+                                        onClick={() => handleCustomActionChange(idx, 'icon', preset.class)}
+                                        title={preset.label}
+                                        className={`aspect-square flex items-center justify-center rounded-xl border transition-all ${
+                                            action.icon === preset.class 
+                                            ? 'bg-brand-cyan border-brand-cyan text-black scale-110 z-10' 
+                                            : 'bg-black/20 border-white/5 text-zinc-500 hover:border-brand-cyan/50'
+                                        }`}
+                                    >
+                                        <i className={`${preset.class} text-xs`}></i>
+                                    </button>
+                                ))}
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                             <div className="space-y-1">
                                 <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Título do Botão</label>
                                 <input 
@@ -411,24 +422,28 @@ const Dashboard: React.FC = () => {
                                     value={action.label} 
                                     onChange={(e) => handleCustomActionChange(idx, 'label', e.target.value)} 
                                     placeholder="Ex: Ver Cardápio"
-                                    className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-2 h-10 rounded-lg outline-none focus:border-brand-cyan text-[10px] font-bold" 
+                                    className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-3 rounded-xl outline-none focus:border-brand-cyan text-[11px] font-bold shadow-sm" 
                                 />
                             </div>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Destino (URL)</label>
-                            <input 
-                                type="text" 
-                                value={action.url} 
-                                onChange={(e) => handleCustomActionChange(idx, 'url', e.target.value)} 
-                                placeholder="https://seusite.com/cardapio.pdf"
-                                className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-3 rounded-lg outline-none focus:border-brand-cyan text-[10px] font-mono" 
-                            />
+                            <div className="space-y-1">
+                                <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Link de Destino</label>
+                                <input 
+                                    type="text" 
+                                    value={action.url} 
+                                    onChange={(e) => handleCustomActionChange(idx, 'url', e.target.value)} 
+                                    placeholder="https://link.com"
+                                    className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-3 rounded-xl outline-none focus:border-brand-cyan text-[11px] font-mono shadow-sm" 
+                                />
+                            </div>
                         </div>
                     </div>
                 ))}
              </div>
-             <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest text-center">Use ícones do FontAwesome 6.5 (Ex: fa-solid fa-book)</p>
+             <div className="bg-brand-cyan/10 p-3 rounded-xl border border-brand-cyan/20">
+                <p className="text-[9px] text-brand-cyan font-bold uppercase tracking-widest text-center">
+                    Crie links para Cardápios, Agendamentos, Portfólio ou qualquer site externo.
+                </p>
+             </div>
          </section>
 
          {/* SEÇÃO 5: REDES SOCIAIS */}
