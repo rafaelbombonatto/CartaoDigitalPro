@@ -377,7 +377,7 @@ const Dashboard: React.FC = () => {
              ))}
          </section>
 
-         {/* NOVA SEÇÃO: BOTÕES PERSONALIZADOS COM SELETOR DE ÍCONE VISUAL */}
+         {/* SEÇÃO 4: BOTÕES PERSONALIZADOS COM SELETOR DE ÍCONE VISUAL */}
          <section className="bg-brand-cyan/5 p-6 rounded-[2rem] border border-brand-cyan/20 shadow-sm space-y-8 relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-10">
                 <i className="fa-solid fa-wand-magic-sparkles text-4xl text-brand-cyan"></i>
@@ -439,11 +439,6 @@ const Dashboard: React.FC = () => {
                     </div>
                 ))}
              </div>
-             <div className="bg-brand-cyan/10 p-3 rounded-xl border border-brand-cyan/20">
-                <p className="text-[9px] text-brand-cyan font-bold uppercase tracking-widest text-center">
-                    Crie links para Cardápios, Agendamentos, Portfólio ou qualquer site externo.
-                </p>
-             </div>
          </section>
 
          {/* SEÇÃO 5: REDES SOCIAIS */}
@@ -467,10 +462,51 @@ const Dashboard: React.FC = () => {
              ))}
          </section>
 
-         {/* SEÇÃO 6: QR CODE */}
+         {/* SEÇÃO 6: MARKETING & ANALYTICS PRO */}
+         <section className="bg-zinc-950 p-6 rounded-[2rem] border border-brand-cyan/20 shadow-sm space-y-6 relative overflow-hidden transition-all hover:border-brand-cyan/40">
+             <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                <i className="fa-solid fa-rocket text-5xl text-brand-cyan"></i>
+             </div>
+             <h2 className="text-[10px] font-black text-brand-cyan uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                <i className="fa-solid fa-chart-simple"></i> 6. Marketing & Analytics PRO
+             </h2>
+             <div className="space-y-5">
+                 <div className="space-y-2">
+                    <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                        <i className="fa-brands fa-facebook-f text-brand-blue"></i> ID do Pixel do Meta
+                    </label>
+                    <input 
+                        type="text" 
+                        value={profileData.metaPixelId || ''} 
+                        onChange={(e) => setProfileData({...profileData, metaPixelId: e.target.value.replace(/\D/g, '')})} 
+                        placeholder="Ex: 123456789012345"
+                        className="w-full bg-black/40 border border-white/5 p-4 rounded-xl outline-none focus:border-brand-cyan text-[11px] font-mono text-brand-cyan transition-all" 
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2 ml-1">
+                        <i className="fa-brands fa-google text-red-500"></i> ID de Medição GA4
+                    </label>
+                    <input 
+                        type="text" 
+                        value={profileData.ga4MeasurementId || ''} 
+                        onChange={(e) => setProfileData({...profileData, ga4MeasurementId: e.target.value.toUpperCase()})} 
+                        placeholder="Ex: G-XXXXXXXXXX"
+                        className="w-full bg-black/40 border border-white/5 p-4 rounded-xl outline-none focus:border-brand-cyan text-[11px] font-mono text-brand-cyan transition-all" 
+                    />
+                 </div>
+             </div>
+             <div className="bg-brand-cyan/10 p-4 rounded-2xl border border-brand-cyan/20">
+                <p className="text-[9px] text-brand-cyan font-bold uppercase tracking-widest text-center leading-relaxed">
+                   As tags UTM são adicionadas automaticamente a todos os links do seu cartão para rastreio total de ROI.
+                </p>
+             </div>
+         </section>
+
+         {/* SEÇÃO 7: QR CODE */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-8 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm flex flex-col items-center">
              <h2 className="text-[10px] font-black text-brand-blue uppercase mb-6 tracking-[0.2em] flex items-center gap-2">
-                <i className="fa-solid fa-qrcode"></i> 6. QR Code de Impressão
+                <i className="fa-solid fa-qrcode"></i> 7. QR Code de Impressão
              </h2>
              <div className="bg-white p-4 rounded-[2.5rem] shadow-2xl mb-6 border border-brand-cyan/20 ring-8 ring-brand-cyan/5 transition-transform hover:scale-105">
                 <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
@@ -480,10 +516,10 @@ const Dashboard: React.FC = () => {
              </button>
          </section>
 
-         {/* ANALYTICS */}
+         {/* ANALYTICS CHARTS */}
          <section className="bg-zinc-950 p-6 rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
             <h2 className="text-[10px] font-black text-brand-cyan uppercase mb-6 tracking-widest flex items-center gap-2">
-                <i className="fa-solid fa-list-check"></i> 7. Conversão por Botão
+                <i className="fa-solid fa-list-check"></i> 8. Conversão por Botão
             </h2>
             <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -509,7 +545,7 @@ const Dashboard: React.FC = () => {
 
          <section className="bg-zinc-950 p-6 rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
             <h2 className="text-[10px] font-black text-brand-cyan uppercase mb-6 tracking-widest flex items-center gap-2">
-                <i className="fa-solid fa-chart-line"></i> 8. Volume nos Últimos 7 Dias
+                <i className="fa-solid fa-chart-line"></i> 9. Volume nos Últimos 7 Dias
             </h2>
             <div className="h-48 w-full mb-4">
                 <ResponsiveContainer width="100%" height="100%">
@@ -541,7 +577,7 @@ const Dashboard: React.FC = () => {
          </section>
 
          <section className="bg-white dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 space-y-4 shadow-sm text-center">
-             <h2 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">9. Extração de Dados Profissional</h2>
+             <h2 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">10. Extração de Dados Profissional</h2>
              <button 
                 onClick={exportCSV}
                 className="w-full bg-zinc-900 hover:bg-zinc-800 text-brand-cyan text-[10px] font-black py-5 rounded-2xl uppercase tracking-[0.15em] flex items-center justify-center gap-3 border border-brand-cyan/20 transition-all shadow-xl"
