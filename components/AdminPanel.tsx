@@ -204,7 +204,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
              {socialLinks.map((link, idx) => (
                <div key={idx} className="flex gap-2 items-center">
                   <div className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-zinc-800 rounded text-gray-500"><i className={link.icon}></i></div>
-                  <input type="text" value={link.url} onChange={(e) => handleSocialChange(idx, e.target.value)} className="flex-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-xs outline-none text-black dark:text-white" placeholder="https://instagram.com/seu-perfil" />
+                  <input type="text" value={link.url} onChange={(e) => handleSocialChange(idx, e.target.value)} className="flex-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded p-2 text-xs outline-none text-black dark:text-white" placeholder={`URL do ${link.label}`} />
                </div>
              ))}
           </section>

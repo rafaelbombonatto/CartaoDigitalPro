@@ -46,6 +46,7 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
 export const DEFAULT_SOCIAL_LINKS: SocialLink[] = [
   { icon: "fa-brands fa-instagram", url: "#", label: "Instagram" },
   { icon: "fa-brands fa-linkedin-in", url: "#", label: "LinkedIn" },
+  { icon: "fa-brands fa-x-twitter", url: "#", label: "X (Twitter)" },
   { icon: "fa-brands fa-facebook-f", url: "#", label: "Facebook" },
   { icon: "fa-brands fa-tiktok", url: "#", label: "TikTok" },
   { icon: "fa-brands fa-youtube", url: "#", label: "YouTube" }
