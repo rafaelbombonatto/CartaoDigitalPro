@@ -4,7 +4,7 @@ import { ProfileData, QuickAction, SocialLink, UploadPending } from '../types';
 import Auth from './Auth';
 import PremiumModal from './PremiumModal';
 import { supabase, uploadImage, checkAliasAvailability } from '../lib/supabase';
-import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS } from '../constants';
+import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS } from '../constants';
 import { useRouter } from '../lib/routerContext';
 import Logo from './Logo';
 import { 
@@ -19,6 +19,7 @@ const Dashboard: React.FC = () => {
   
   const [profileData, setProfileData] = useState<ProfileData>(DEFAULT_PROFILE);
   const [quickActions, setQuickActions] = useState<QuickAction[]>(DEFAULT_QUICK_ACTIONS);
+  const [customActions, setCustomActions] = useState<QuickAction[]>(DEFAULT_CUSTOM_ACTIONS);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(DEFAULT_SOCIAL_LINKS);
   
   const [isSaving, setIsSaving] = useState(false);
@@ -122,13 +123,12 @@ const Dashboard: React.FC = () => {
           setProfileData(profile);
           
           if (content.actions) setQuickActions(content.actions);
+          if (content.customActions) setCustomActions(content.customActions);
           
-          // Lógica de Merge para Redes Sociais: Garante que novas redes (como o X) apareçam
           if (content.links) {
               const savedLinks = content.links as SocialLink[];
               const mergedLinks = DEFAULT_SOCIAL_LINKS.map(defaultLink => {
                   const saved = savedLinks.find(s => s.label === defaultLink.label);
-                  // Se o link salvo tiver "#", limpamos para facilitar o uso do usuário
                   if (saved && saved.url === '#') saved.url = '';
                   return saved || defaultLink;
               });
@@ -161,7 +161,12 @@ const Dashboard: React.FC = () => {
           id: session.user.id,
           alias: updatedProfile.alias,
           updated_at: new Date(),
-          content: { profile: updatedProfile, actions: quickActions, links: socialLinks }
+          content: { 
+            profile: updatedProfile, 
+            actions: quickActions, 
+            customActions: customActions,
+            links: socialLinks 
+          }
       });
 
       if (error) throw error;
@@ -173,28 +178,6 @@ const Dashboard: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const exportCSV = () => {
-      if (rawClicks.length === 0) return alert("Sem dados para exportar ainda.");
-      const headers = "data,hora,tipo,destino\n";
-      const rows = rawClicks.map(click => {
-          const date = new Date(click.created_at);
-          date.setHours(date.getHours() - 3); 
-          const dataStr = date.toLocaleDateString('pt-BR');
-          const horaStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-          const tipo = click.action_type || 'desconhecido';
-          const destino = click.action_label || 'sem_nome';
-          return `${dataStr},${horaStr},${tipo.replace(/,/g, '')},${destino.replace(/,/g, '')}`;
-      }).join("\n");
-      const csvContent = "data:text/csv;charset=utf-8," + headers + rows;
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `analisecardpro_${profileData.alias}_relatorio.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
   };
 
   const handleActionChange = (index: number, val: string) => {
@@ -225,6 +208,12 @@ const Dashboard: React.FC = () => {
       setQuickActions(newActions);
   };
 
+  const handleCustomActionChange = (index: number, field: keyof QuickAction, value: string) => {
+      const newCustom = [...customActions];
+      newCustom[index] = { ...newCustom[index], [field]: value };
+      setCustomActions(newCustom);
+  };
+
   const getActionDisplay = (action: QuickAction) => {
       if (!action.url || action.url === '#' || action.url === '') return '';
       if (action.type === 'whatsapp') return action.url.replace('https://wa.me/55', '');
@@ -236,16 +225,6 @@ const Dashboard: React.FC = () => {
           return action.url;
       }
       return action.url;
-  };
-
-  const getPlaceholder = (type: string) => {
-    switch (type) {
-      case 'whatsapp': return 'Ex: 11999999999 (DDD + Número)';
-      case 'email': return 'Ex: contato@empresa.com.br';
-      case 'map': return 'Endereço OU Link do Google Maps';
-      case 'website': return 'Ex: www.seusite.com.br';
-      default: return 'Digite o link ou texto';
-    }
   };
 
   const handleSocialChange = (index: number, url: string) => {
@@ -269,6 +248,28 @@ const Dashboard: React.FC = () => {
       ? { label: 'TESTE EXPIRADO', color: 'bg-red-500 text-white shadow-lg shadow-red-500/20', icon: 'fa-triangle-exclamation', clickable: true }
       : { label: `TESTE ATIVO`, color: 'bg-zinc-800 text-brand-cyan border border-brand-cyan/30', icon: 'fa-clock', clickable: true };
 
+  const exportCSV = () => {
+      if (rawClicks.length === 0) return alert("Sem dados para exportar ainda.");
+      const headers = "data,hora,tipo,destino\n";
+      const rows = rawClicks.map(click => {
+          const date = new Date(click.created_at);
+          date.setHours(date.getHours() - 3); 
+          const dataStr = date.toLocaleDateString('pt-BR');
+          const horaStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          const tipo = click.action_type || 'desconhecido';
+          const destino = click.action_label || 'sem_nome';
+          return `${dataStr},${horaStr},${tipo.replace(/,/g, '')},${destino.replace(/,/g, '')}`;
+      }).join("\n");
+      const csvContent = "data:text/csv;charset=utf-8," + headers + rows;
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `analisecardpro_${profileData.alias}_relatorio.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white pb-40 transition-colors duration-500">
       <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
@@ -289,6 +290,7 @@ const Dashboard: React.FC = () => {
 
       <div className="pt-28 px-4 max-w-xl mx-auto space-y-10">
          
+         {/* SEÇÃO 1: ENDEREÇO */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm transition-all hover:shadow-md">
             <h2 className="text-[10px] font-black text-brand-blue uppercase mb-4 tracking-[0.2em] ml-1 flex items-center gap-2">
                 <i className="fa-solid fa-link"></i> 1. Endereço Digital
@@ -314,6 +316,7 @@ const Dashboard: React.FC = () => {
             </div>
          </section>
 
+         {/* SEÇÃO 2: IDENTIDADE */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-6">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                 <i className="fa-solid fa-id-card"></i> 2. Aparência & Identidade
@@ -353,6 +356,7 @@ const Dashboard: React.FC = () => {
              </div>
          </section>
 
+         {/* SEÇÃO 3: BOTÕES PADRÃO */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-4">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                 <i className="fa-solid fa-headset"></i> 3. Canais de Atendimento
@@ -366,21 +370,71 @@ const Dashboard: React.FC = () => {
                         type="text" 
                         value={getActionDisplay(action)} 
                         onChange={(e) => handleActionChange(idx, e.target.value)} 
-                        placeholder={getPlaceholder(action.type)}
+                        placeholder={'Ex: ' + (action.type === 'whatsapp' ? '11999999999' : 'Endereço')}
                         className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-4 rounded-xl outline-none focus:border-brand-cyan text-[11px] font-bold shadow-sm transition-all" 
                     />
-                    {action.type === 'map' && (
-                        <p className="text-[8px] text-zinc-400 font-bold uppercase tracking-widest ml-1 animate-fade-in">
-                            Dica: Você pode colar um link do Maps ou digitar seu endereço.
-                        </p>
-                    )}
                  </div>
              ))}
          </section>
 
+         {/* NOVA SEÇÃO: BOTÕES PERSONALIZADOS */}
+         <section className="bg-brand-cyan/5 p-6 rounded-[2rem] border border-brand-cyan/20 shadow-sm space-y-6 relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-10">
+                <i className="fa-solid fa-wand-magic-sparkles text-4xl text-brand-cyan"></i>
+             </div>
+             <h2 className="text-[10px] font-black text-brand-cyan uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                <i className="fa-solid fa-plus-circle"></i> 4. Botões Personalizados (PRO)
+             </h2>
+             <div className="grid grid-cols-1 gap-6">
+                {customActions.map((action, idx) => (
+                    <div key={idx} className="space-y-3 p-4 bg-white/5 dark:bg-black/40 rounded-2xl border border-white/10">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                                <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Ícone (FA class)</label>
+                                <div className="flex gap-2">
+                                    <div className="w-10 h-10 shrink-0 bg-black rounded-lg flex items-center justify-center text-brand-cyan border border-white/10">
+                                        <i className={action.icon || 'fa-solid fa-star'}></i>
+                                    </div>
+                                    <input 
+                                        type="text" 
+                                        value={action.icon} 
+                                        onChange={(e) => handleCustomActionChange(idx, 'icon', e.target.value)} 
+                                        placeholder="fa-solid fa-utensils"
+                                        className="flex-1 bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-2 rounded-lg outline-none focus:border-brand-cyan text-[10px] font-mono" 
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Título do Botão</label>
+                                <input 
+                                    type="text" 
+                                    value={action.label} 
+                                    onChange={(e) => handleCustomActionChange(idx, 'label', e.target.value)} 
+                                    placeholder="Ex: Ver Cardápio"
+                                    className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-2 h-10 rounded-lg outline-none focus:border-brand-cyan text-[10px] font-bold" 
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Destino (URL)</label>
+                            <input 
+                                type="text" 
+                                value={action.url} 
+                                onChange={(e) => handleCustomActionChange(idx, 'url', e.target.value)} 
+                                placeholder="https://seusite.com/cardapio.pdf"
+                                className="w-full bg-white dark:bg-black border border-gray-200 dark:border-zinc-800 p-3 rounded-lg outline-none focus:border-brand-cyan text-[10px] font-mono" 
+                            />
+                        </div>
+                    </div>
+                ))}
+             </div>
+             <p className="text-[8px] text-zinc-500 font-bold uppercase tracking-widest text-center">Use ícones do FontAwesome 6.5 (Ex: fa-solid fa-book)</p>
+         </section>
+
+         {/* SEÇÃO 5: REDES SOCIAIS */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-4">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
-                <i className="fa-solid fa-share-nodes"></i> 4. Redes Sociais
+                <i className="fa-solid fa-share-nodes"></i> 5. Redes Sociais
              </h2>
              {socialLinks.map((link, idx) => (
                  <div key={idx} className="flex gap-2">
@@ -398,50 +452,20 @@ const Dashboard: React.FC = () => {
              ))}
          </section>
 
+         {/* SEÇÃO 6: QR CODE */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-8 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm flex flex-col items-center">
              <h2 className="text-[10px] font-black text-brand-blue uppercase mb-6 tracking-[0.2em] flex items-center gap-2">
-                <i className="fa-solid fa-qrcode"></i> 5. QR Code de Impressão
+                <i className="fa-solid fa-qrcode"></i> 6. QR Code de Impressão
              </h2>
              <div className="bg-white p-4 rounded-[2.5rem] shadow-2xl mb-6 border border-brand-cyan/20 ring-8 ring-brand-cyan/5 transition-transform hover:scale-105">
                 <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
              </div>
-             <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-widest text-center mb-6">Aponte a câmera para testar seu card digital</p>
              <button onClick={() => window.open(qrCodeUrl, '_blank')} className="bg-white dark:bg-zinc-800 text-black dark:text-white text-[10px] font-black py-4 px-8 rounded-2xl border border-gray-200 dark:border-zinc-700 shadow-md hover:scale-105 transition-all uppercase tracking-widest flex items-center gap-2">
                 <i className="fa-solid fa-download"></i> Download Alta Resolução
              </button>
          </section>
 
-         <section className="bg-zinc-950 p-6 rounded-[2rem] border border-white/5 shadow-2xl space-y-5">
-             <h2 className="text-[10px] font-black text-brand-cyan uppercase tracking-[0.2em] flex items-center gap-2">
-                <i className="fa-solid fa-rocket"></i> 6. Marketing & Analytics PRO
-             </h2>
-             <div className="space-y-4">
-                 <div className="space-y-1.5">
-                    <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><i className="fa-brands fa-facebook"></i> ID do Pixel do Meta</label>
-                    <input 
-                        type="text" 
-                        value={profileData.metaPixelId || ''} 
-                        onChange={(e) => setProfileData({...profileData, metaPixelId: e.target.value})} 
-                        placeholder="Ex: 123456789012345"
-                        className="w-full bg-black border border-white/10 p-4 rounded-xl outline-none focus:border-brand-cyan text-[11px] font-mono text-brand-cyan shadow-inner transition-all" 
-                    />
-                 </div>
-                 <div className="space-y-1.5">
-                    <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest flex items-center gap-2"><i className="fa-brands fa-google"></i> ID de Medição GA4</label>
-                    <input 
-                        type="text" 
-                        value={profileData.ga4MeasurementId || ''} 
-                        onChange={(e) => setProfileData({...profileData, ga4MeasurementId: e.target.value})} 
-                        placeholder="Ex: G-XXXXXXXXXX"
-                        className="w-full bg-black border border-white/10 p-4 rounded-xl outline-none focus:border-brand-cyan text-[11px] font-mono text-brand-cyan shadow-inner transition-all" 
-                    />
-                 </div>
-             </div>
-             <div className="bg-brand-cyan/5 border border-brand-cyan/20 p-4 rounded-xl">
-                 <p className="text-[10px] text-brand-cyan font-medium leading-relaxed italic">As tags UTM são adicionadas automaticamente a todos os links do seu cartão para rastreio total de ROI.</p>
-             </div>
-         </section>
-
+         {/* ANALYTICS */}
          <section className="bg-zinc-950 p-6 rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
             <h2 className="text-[10px] font-black text-brand-cyan uppercase mb-6 tracking-widest flex items-center gap-2">
                 <i className="fa-solid fa-list-check"></i> 7. Conversão por Botão
@@ -503,12 +527,11 @@ const Dashboard: React.FC = () => {
 
          <section className="bg-white dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800 space-y-4 shadow-sm text-center">
              <h2 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">9. Extração de Dados Profissional</h2>
-             <p className="text-[11px] text-zinc-500 max-w-xs mx-auto mb-4 font-medium leading-relaxed">Baixe o relatório detalhado linha a linha para análise de ROI em planilhas externas.</p>
              <button 
                 onClick={exportCSV}
                 className="w-full bg-zinc-900 hover:bg-zinc-800 text-brand-cyan text-[10px] font-black py-5 rounded-2xl uppercase tracking-[0.15em] flex items-center justify-center gap-3 border border-brand-cyan/20 transition-all shadow-xl"
              >
-                <i className="fa-solid fa-file-csv text-xl"></i> Exportar Relatório (data, hora, tipo, destino)
+                <i className="fa-solid fa-file-csv text-xl"></i> Exportar Relatório CSV
              </button>
          </section>
       </div>

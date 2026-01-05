@@ -9,7 +9,7 @@ export interface QuickAction {
   icon: string;
   label: string;
   url: string;
-  type: 'whatsapp' | 'map' | 'email' | 'website';
+  type: 'whatsapp' | 'map' | 'email' | 'website' | 'custom';
 }
 
 export interface DocumentInfo {

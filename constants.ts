@@ -43,6 +43,11 @@ export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
   }
 ];
 
+export const DEFAULT_CUSTOM_ACTIONS: QuickAction[] = [
+  { icon: "fa-solid fa-star", label: "", url: "", type: "custom" },
+  { icon: "fa-solid fa-star", label: "", url: "", type: "custom" }
+];
+
 export const DEFAULT_SOCIAL_LINKS: SocialLink[] = [
   { icon: "fa-brands fa-instagram", url: "", label: "Instagram" },
   { icon: "fa-brands fa-linkedin-in", url: "", label: "LinkedIn" },

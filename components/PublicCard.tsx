@@ -9,7 +9,7 @@ import Footer from './Footer';
 import Logo from './Logo';
 import { ProfileData, QuickAction, SocialLink } from '../types';
 import { getProfileByAlias, supabase } from '../lib/supabase';
-import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS } from '../constants';
+import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS } from '../constants';
 
 interface PublicCardProps {
     slug: string;
@@ -38,10 +38,11 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
   const [profileData, setProfileData] = useState<ProfileData>(DEFAULT_PROFILE);
   const [quickActions, setQuickActions] = useState<QuickAction[]>(DEFAULT_QUICK_ACTIONS);
+  const [customActions, setCustomActions] = useState<QuickAction[]>(DEFAULT_CUSTOM_ACTIONS);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(DEFAULT_SOCIAL_LINKS);
 
   const isActionValid = (action: QuickAction) => {
-      if (isDemo) return true;
+      if (isDemo) return action.label !== '';
       return action.url && 
              action.url !== '' && 
              action.url !== '#' && 
@@ -50,9 +51,11 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
              action.url !== 'https://maps.google.com/?q=';
   };
 
+  // Mescla botões padrão com personalizados para o grid
   const visibleActions = useMemo(() => {
-      return quickActions.filter(isActionValid);
-  }, [quickActions, isDemo]);
+      const allActions = [...quickActions, ...customActions];
+      return allActions.filter(isActionValid);
+  }, [quickActions, customActions, isDemo]);
 
   // Scripts de Marketing (Pixel/GA4)
   useEffect(() => {
@@ -160,7 +163,6 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             const createdAt = new Date(profile.createdAt || dbCreatedAt);
             const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); 
             
-            // Regra Crítica: Se não for premium e o tempo acabou, simulamos erro de "não localizado"
             if (!isPremium && new Date() > trialEnd) {
                 setError(true);
                 setLoading(false);
@@ -175,6 +177,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             });
 
             if (content.actions) setQuickActions(content.actions);
+            if (content.customActions) setCustomActions(content.customActions);
             if (content.links) setSocialLinks(content.links);
         }
       } catch (e) {
@@ -211,7 +214,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             {visibleActions.map((action, index) => {
                 const isLastAndOdd = visibleActions.length % 2 !== 0 && index === visibleActions.length - 1;
                 return (
-                <div key={index} className={isLastAndOdd ? 'col-span-2' : ''} onClick={(e) => { e.preventDefault(); handleActionClick(action, action.type); }}>
+                <div key={index} className={isLastAndOdd ? 'col-span-2' : ''} onClick={(e) => { e.preventDefault(); handleActionClick(action, action.type || 'custom'); }}>
                     <ActionButton action={action} index={index} isDemo={isDemo} />
                 </div>
                 );
