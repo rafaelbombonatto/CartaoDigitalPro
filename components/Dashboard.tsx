@@ -120,8 +120,22 @@ const Dashboard: React.FC = () => {
           
           if (!profile.document) profile.document = { label: '', value: '' };
           setProfileData(profile);
+          
           if (content.actions) setQuickActions(content.actions);
-          if (content.links) setSocialLinks(content.links);
+          
+          // Lógica de Merge para Redes Sociais: Garante que novas redes (como o X) apareçam
+          if (content.links) {
+              const savedLinks = content.links as SocialLink[];
+              const mergedLinks = DEFAULT_SOCIAL_LINKS.map(defaultLink => {
+                  const saved = savedLinks.find(s => s.label === defaultLink.label);
+                  // Se o link salvo tiver "#", limpamos para facilitar o uso do usuário
+                  if (saved && saved.url === '#') saved.url = '';
+                  return saved || defaultLink;
+              });
+              setSocialLinks(mergedLinks);
+          } else {
+              setSocialLinks(DEFAULT_SOCIAL_LINKS);
+          }
       }
     } catch (err) {
       console.error(err);
@@ -196,16 +210,13 @@ const Dashboard: React.FC = () => {
           } else if (type === 'email') {
               finalUrl = `mailto:${finalUrl}`;
           } else if (type === 'map') {
-              // Lógica inteligente para Mapas
               if (finalUrl.toLowerCase().startsWith('http')) {
-                  // Se for um link (encurtado ou completo), usa direto
                   newActions[index].url = finalUrl;
               } else {
-                  // Se for endereço de texto, envelopa na busca do Google
                   newActions[index].url = `https://maps.google.com/?q=${encodeURIComponent(finalUrl)}`;
               }
               setQuickActions(newActions);
-              return; // Retorno antecipado para evitar sobrescrita
+              return;
           } else if (type === 'website') {
               finalUrl = finalUrl.startsWith('http') ? finalUrl : `https://${finalUrl}`;
           }
@@ -215,15 +226,13 @@ const Dashboard: React.FC = () => {
   };
 
   const getActionDisplay = (action: QuickAction) => {
-      if (!action.url || action.url === '#') return '';
+      if (!action.url || action.url === '#' || action.url === '') return '';
       if (action.type === 'whatsapp') return action.url.replace('https://wa.me/55', '');
       if (action.type === 'email') return action.url.replace('mailto:', '');
       if (action.type === 'map') {
-          // Se for uma busca do Google Maps, limpa o prefixo para mostrar o endereço ao usuário
           if (action.url.startsWith('https://maps.google.com/?q=')) {
               return decodeURIComponent(action.url.replace('https://maps.google.com/?q=', ''));
           }
-          // Se for um link direto (como o encurtado maps.app.goo.gl), mostra o link original
           return action.url;
       }
       return action.url;
