@@ -157,6 +157,11 @@ const Dashboard: React.FC = () => {
         if (publicUrl) updatedProfile = { ...updatedProfile, [upload.field]: publicUrl };
       }
 
+      // Garante que a data de criação seja salva se for o primeiro save
+      if (!updatedProfile.createdAt) {
+          updatedProfile.createdAt = new Date().toISOString();
+      }
+
       const { error } = await supabase.from('profiles').upsert({
           id: session.user.id,
           alias: updatedProfile.alias,
@@ -393,7 +398,6 @@ const Dashboard: React.FC = () => {
                             Botão {idx + 1}
                         </div>
                         
-                        {/* Seletor Visual de Ícones */}
                         <div className="space-y-3">
                             <label className="text-[8px] font-black text-zinc-500 uppercase tracking-widest ml-1">Escolha um Ícone</label>
                             <div className="grid grid-cols-6 sm:grid-cols-12 gap-2">

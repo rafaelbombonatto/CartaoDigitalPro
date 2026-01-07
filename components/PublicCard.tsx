@@ -51,13 +51,11 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
              action.url !== 'https://maps.google.com/?q=';
   };
 
-  // Mescla botões padrão com personalizados para o grid
   const visibleActions = useMemo(() => {
       const allActions = [...quickActions, ...customActions];
       return allActions.filter(isActionValid);
   }, [quickActions, customActions, isDemo]);
 
-  // Scripts de Marketing (Pixel/GA4)
   useEffect(() => {
     if (loading || error || isDemo) return;
 
@@ -127,11 +125,13 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
   useEffect(() => {
     if (slug) {
-        if (slug === 'exemplo' || slug === 'demo') {
+        // Força o slug para minúsculo para garantir compatibilidade com a busca no banco
+        const cleanSlug = slug.toLowerCase();
+        if (cleanSlug === 'exemplo' || cleanSlug === 'demo') {
             setIsDemo(true);
             setLoading(false);
         } else {
-            loadProfile(slug);
+            loadProfile(cleanSlug);
         }
     }
   }, [slug]);
@@ -160,9 +160,11 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             const dbCreatedAt = data.created_at;
             
             const isPremium = !!profile.isPremium;
-            const createdAt = new Date(profile.createdAt || dbCreatedAt);
+            const dateToUse = profile.createdAt || dbCreatedAt || new Date().toISOString();
+            const createdAt = new Date(dateToUse);
             const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); 
             
+            // Verificação robusta de trial
             if (!isPremium && new Date() > trialEnd) {
                 setError(true);
                 setLoading(false);
