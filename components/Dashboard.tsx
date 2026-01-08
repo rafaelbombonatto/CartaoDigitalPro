@@ -4,7 +4,7 @@ import { ProfileData, QuickAction, SocialLink, UploadPending } from '../types';
 import Auth from './Auth';
 import PremiumModal from './PremiumModal';
 import { supabase, uploadImage, checkAliasAvailability } from '../lib/supabase';
-import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS, PRESET_ICONS } from '../constants';
+import { BLANK_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS, PRESET_ICONS } from '../constants';
 import { useRouter } from '../lib/routerContext';
 import Logo from './Logo';
 import { 
@@ -17,7 +17,7 @@ const Dashboard: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   
-  const [profileData, setProfileData] = useState<ProfileData>(DEFAULT_PROFILE);
+  const [profileData, setProfileData] = useState<ProfileData>(BLANK_PROFILE);
   const [quickActions, setQuickActions] = useState<QuickAction[]>(DEFAULT_QUICK_ACTIONS);
   const [customActions, setCustomActions] = useState<QuickAction[]>(DEFAULT_CUSTOM_ACTIONS);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(DEFAULT_SOCIAL_LINKS);
@@ -114,7 +114,7 @@ const Dashboard: React.FC = () => {
       const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (data) {
           const content = data.content || {};
-          let profile = content.profile || { ...DEFAULT_PROFILE };
+          let profile = content.profile || { ...BLANK_PROFILE };
           profile.isPremium = !!profile.isPremium;
           profile.alias = data.alias || profile.alias;
           profile.createdAt = profile.createdAt || data.created_at;
@@ -133,9 +133,10 @@ const Dashboard: React.FC = () => {
                   return saved || defaultLink;
               });
               setSocialLinks(mergedLinks);
-          } else {
-              setSocialLinks(DEFAULT_SOCIAL_LINKS);
           }
+      } else {
+          // Usuário novo, inicia com perfil limpo
+          setProfileData(BLANK_PROFILE);
       }
     } catch (err) {
       console.error(err);
@@ -146,25 +147,31 @@ const Dashboard: React.FC = () => {
 
   const handleSave = async () => {
     if (!session) return;
+    if (!profileData.alias) {
+        alert("Por favor, defina um endereço digital para o seu cartão.");
+        return;
+    }
+
     setIsSaving(true);
     try {
-      const isAvailable = await checkAliasAvailability(profileData.alias, session.user.id);
-      if (!isAvailable) throw new Error("Este endereço já está em uso.");
+      const cleanAlias = profileData.alias.toLowerCase().trim();
+      const isAvailable = await checkAliasAvailability(cleanAlias, session.user.id);
+      if (!isAvailable) throw new Error("Este endereço já está em uso por outro usuário.");
 
-      let updatedProfile = { ...profileData };
+      let updatedProfile = { ...profileData, alias: cleanAlias };
       for (const upload of pendingUploads) {
         const publicUrl = await uploadImage(upload.file, session.user.id);
         if (publicUrl) updatedProfile = { ...updatedProfile, [upload.field]: publicUrl };
       }
 
-      // Garante que a data de criação seja salva se for o primeiro save
+      // IMPORTANTE: Define a data de criação no primeiro salvamento para não quebrar o Trial
       if (!updatedProfile.createdAt) {
           updatedProfile.createdAt = new Date().toISOString();
       }
 
       const { error } = await supabase.from('profiles').upsert({
           id: session.user.id,
-          alias: updatedProfile.alias,
+          alias: cleanAlias,
           updated_at: new Date(),
           content: { 
             profile: updatedProfile, 
@@ -177,7 +184,7 @@ const Dashboard: React.FC = () => {
       if (error) throw error;
       setProfileData(updatedProfile);
       setPendingUploads([]);
-      alert('Perfil publicado com sucesso!');
+      alert('Perfil publicado com sucesso! Agora você pode ver seu card.');
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -288,14 +295,13 @@ const Dashboard: React.FC = () => {
              >
                 <i className={`fa-solid ${status.icon}`}></i> <span>{status.label}</span>
              </button>
-             <button onClick={() => window.open(`/${profileData.alias}`, '_blank')} className="text-[10px] font-black px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-brand-cyan uppercase tracking-widest transition-all hover:border-brand-cyan">Ver Card</button>
+             <button onClick={() => profileData.alias ? window.open(`/${profileData.alias}`, '_blank') : alert("Defina um endereço primeiro.")} className="text-[10px] font-black px-3 py-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 text-brand-cyan uppercase tracking-widest transition-all hover:border-brand-cyan">Ver Card</button>
              <button onClick={() => supabase.auth.signOut().then(() => navigate('/'))} className="text-[10px] font-black text-red-500 px-2 uppercase tracking-widest hover:underline">Sair</button>
         </div>
       </header>
 
       <div className="pt-28 px-4 max-w-xl mx-auto space-y-10">
          
-         {/* SEÇÃO 1: ENDEREÇO */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm transition-all hover:shadow-md">
             <h2 className="text-[10px] font-black text-brand-blue uppercase mb-4 tracking-[0.2em] ml-1 flex items-center gap-2">
                 <i className="fa-solid fa-link"></i> 1. Endereço Digital
@@ -306,10 +312,12 @@ const Dashboard: React.FC = () => {
                     type="text" 
                     value={profileData.alias} 
                     onChange={(e) => setProfileData({...profileData, alias: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')})} 
+                    placeholder="ex-seu-nome"
                     className="flex-1 bg-transparent py-3 px-1 outline-none font-black text-brand-cyan text-sm min-w-[80px]" 
                 />
                 <button 
                   onClick={() => {
+                      if(!profileData.alias) return alert("Defina um endereço primeiro.");
                       navigator.clipboard.writeText(`${window.location.origin}/${profileData.alias}`);
                       setCopiedLink(true);
                       setTimeout(() => setCopiedLink(false), 2000);
@@ -321,7 +329,6 @@ const Dashboard: React.FC = () => {
             </div>
          </section>
 
-         {/* SEÇÃO 2: IDENTIDADE */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-6">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                 <i className="fa-solid fa-id-card"></i> 2. Aparência & Identidade
@@ -361,7 +368,6 @@ const Dashboard: React.FC = () => {
              </div>
          </section>
 
-         {/* SEÇÃO 3: BOTÕES PADRÃO */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-4">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                 <i className="fa-solid fa-headset"></i> 3. Canais de Atendimento
@@ -382,7 +388,6 @@ const Dashboard: React.FC = () => {
              ))}
          </section>
 
-         {/* SEÇÃO 4: BOTÕES PERSONALIZADOS COM SELETOR DE ÍCONE VISUAL */}
          <section className="bg-brand-cyan/5 p-6 rounded-[2rem] border border-brand-cyan/20 shadow-sm space-y-8 relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-10">
                 <i className="fa-solid fa-wand-magic-sparkles text-4xl text-brand-cyan"></i>
@@ -445,7 +450,6 @@ const Dashboard: React.FC = () => {
              </div>
          </section>
 
-         {/* SEÇÃO 5: REDES SOCIAIS */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-6 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm space-y-4">
              <h2 className="text-[10px] font-black text-brand-blue uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                 <i className="fa-solid fa-share-nodes"></i> 5. Redes Sociais
@@ -507,7 +511,6 @@ const Dashboard: React.FC = () => {
              </div>
          </section>
 
-         {/* SEÇÃO 7: QR CODE */}
          <section className="bg-gray-50/50 dark:bg-zinc-900/50 p-8 rounded-[2rem] border border-gray-100 dark:border-zinc-800/50 shadow-sm flex flex-col items-center">
              <h2 className="text-[10px] font-black text-brand-blue uppercase mb-6 tracking-[0.2em] flex items-center gap-2">
                 <i className="fa-solid fa-qrcode"></i> 7. QR Code de Impressão
@@ -520,7 +523,6 @@ const Dashboard: React.FC = () => {
              </button>
          </section>
 
-         {/* ANALYTICS CHARTS */}
          <section className="bg-zinc-950 p-6 rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden">
             <h2 className="text-[10px] font-black text-brand-cyan uppercase mb-6 tracking-widest flex items-center gap-2">
                 <i className="fa-solid fa-list-check"></i> 8. Conversão por Botão

@@ -9,7 +9,7 @@ import Footer from './Footer';
 import Logo from './Logo';
 import { ProfileData, QuickAction, SocialLink } from '../types';
 import { getProfileByAlias, supabase } from '../lib/supabase';
-import { DEFAULT_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS } from '../constants';
+import { BLANK_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS } from '../constants';
 
 interface PublicCardProps {
     slug: string;
@@ -36,7 +36,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
   const [isDemo, setIsDemo] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  const [profileData, setProfileData] = useState<ProfileData>(DEFAULT_PROFILE);
+  const [profileData, setProfileData] = useState<ProfileData>(BLANK_PROFILE);
   const [quickActions, setQuickActions] = useState<QuickAction[]>(DEFAULT_QUICK_ACTIONS);
   const [customActions, setCustomActions] = useState<QuickAction[]>(DEFAULT_CUSTOM_ACTIONS);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(DEFAULT_SOCIAL_LINKS);
@@ -125,8 +125,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
   useEffect(() => {
     if (slug) {
-        // Força o slug para minúsculo para garantir compatibilidade com a busca no banco
-        const cleanSlug = slug.toLowerCase();
+        const cleanSlug = slug.toLowerCase().trim();
         if (cleanSlug === 'exemplo' || cleanSlug === 'demo') {
             setIsDemo(true);
             setLoading(false);
@@ -157,15 +156,17 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         if (data.content) {
             const content = data.content;
             const profile = content.profile as ProfileData;
-            const dbCreatedAt = data.created_at;
             
             const isPremium = !!profile.isPremium;
-            const dateToUse = profile.createdAt || dbCreatedAt || new Date().toISOString();
-            const createdAt = new Date(dateToUse);
+            // Se não houver data de criação no perfil, usamos a do registro no banco
+            const dateStr = profile.createdAt || data.created_at;
+            const createdAt = new Date(dateStr);
             const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); 
             
-            // Verificação robusta de trial
-            if (!isPremium && new Date() > trialEnd) {
+            // Se a data for inválida (perfil corrompido ou novo sem save), permitimos o acesso
+            const isValidDate = !isNaN(createdAt.getTime());
+
+            if (!isPremium && isValidDate && new Date() > trialEnd) {
                 setError(true);
                 setLoading(false);
                 return;
@@ -175,7 +176,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             setProfileData({
                 ...profile,
                 isPremium,
-                createdAt: createdAt.toISOString()
+                createdAt: isValidDate ? createdAt.toISOString() : new Date().toISOString()
             });
 
             if (content.actions) setQuickActions(content.actions);
@@ -183,6 +184,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             if (content.links) setSocialLinks(content.links);
         }
       } catch (e) {
+          console.error(e);
           setError(true);
       } finally {
           setLoading(false);
@@ -194,10 +196,10 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
   if (error) return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-6 text-zinc-600">
-            <i className="fa-solid fa-magnifying-glass text-2xl"></i>
+            <i className="fa-solid fa-triangle-exclamation text-2xl"></i>
         </div>
-        <h1 className="text-xl font-black mb-2 uppercase tracking-[0.2em] text-zinc-400">Cartão não localizado</h1>
-        <p className="text-zinc-600 text-xs mb-8 max-w-[240px]">O endereço solicitado não existe ou foi removido pelo proprietário.</p>
+        <h1 className="text-xl font-black mb-2 uppercase tracking-[0.2em] text-zinc-400">Cartão indisponível</h1>
+        <p className="text-zinc-600 text-xs mb-8 max-w-[240px]">O endereço solicitado não existe ou o período de teste expirou.</p>
         <button onClick={() => navigate('/')} className="bg-white/5 hover:bg-white/10 text-zinc-500 font-bold px-8 py-3 rounded-xl uppercase text-[10px] tracking-widest transition-all">Criar meu cartão</button>
     </div>
   );

@@ -16,6 +16,20 @@ export const DEFAULT_PROFILE: ProfileData = {
   isPremium: false
 };
 
+export const BLANK_PROFILE: ProfileData = {
+  alias: "",
+  name: "",
+  title: "",
+  document: { label: "", value: "" },
+  bio: "",
+  avatarUrl: "",
+  backgroundUrl: "",
+  themeColor: "#00E5FF",
+  isPremium: false,
+  metaPixelId: "",
+  ga4MeasurementId: ""
+};
+
 export const PRESET_ICONS = [
   { class: "fa-solid fa-utensils", label: "Cardápio" },
   { class: "fa-solid fa-calendar-check", label: "Agenda" },
@@ -32,30 +46,10 @@ export const PRESET_ICONS = [
 ];
 
 export const DEFAULT_QUICK_ACTIONS: QuickAction[] = [
-  {
-    icon: "fa-brands fa-whatsapp",
-    label: "WhatsApp",
-    url: "https://wa.me/5511999999999",
-    type: "whatsapp"
-  },
-  {
-    icon: "fa-solid fa-location-dot",
-    label: "Localização",
-    url: "https://maps.google.com",
-    type: "map"
-  },
-  {
-    icon: "fa-solid fa-envelope",
-    label: "E-mail",
-    url: "mailto:contato@analisecardpro.com",
-    type: "email"
-  },
-  {
-    icon: "fa-solid fa-globe",
-    label: "Portfólio",
-    url: "https://www.analisecardpro.com",
-    type: "website"
-  }
+  { icon: "fa-brands fa-whatsapp", label: "WhatsApp", url: "", type: "whatsapp" },
+  { icon: "fa-solid fa-location-dot", label: "Localização", url: "", type: "map" },
+  { icon: "fa-solid fa-envelope", label: "E-mail", url: "", type: "email" },
+  { icon: "fa-solid fa-globe", label: "Website", url: "", type: "website" }
 ];
 
 export const DEFAULT_CUSTOM_ACTIONS: QuickAction[] = [
