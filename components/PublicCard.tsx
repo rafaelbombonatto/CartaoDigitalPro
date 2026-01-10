@@ -9,7 +9,16 @@ import Footer from './Footer';
 import Logo from './Logo';
 import { ProfileData, QuickAction, SocialLink } from '../types';
 import { getProfileByAlias, supabase } from '../lib/supabase';
-import { BLANK_PROFILE, DEFAULT_QUICK_ACTIONS, DEFAULT_SOCIAL_LINKS, DEFAULT_CUSTOM_ACTIONS } from '../constants';
+import { 
+  BLANK_PROFILE, 
+  DEFAULT_PROFILE, 
+  DEMO_QUICK_ACTIONS, 
+  DEMO_SOCIAL_LINKS, 
+  DEMO_CUSTOM_ACTIONS,
+  DEFAULT_QUICK_ACTIONS,
+  DEFAULT_SOCIAL_LINKS,
+  DEFAULT_CUSTOM_ACTIONS
+} from '../constants';
 
 interface PublicCardProps {
     slug: string;
@@ -106,10 +115,6 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         }
     } catch (e) {}
 
-    if (window.fbq && profileData.metaPixelId) {
-      window.fbq('trackCustom', 'CardClick', { action_type: type, label: action.label, alias: profileData.alias });
-    }
-
     if (userId) {
       supabase.from('profiles_clicks').insert({
         profile_id: userId,
@@ -128,6 +133,10 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         const cleanSlug = slug.toLowerCase().trim();
         if (cleanSlug === 'exemplo' || cleanSlug === 'demo') {
             setIsDemo(true);
+            setProfileData(DEFAULT_PROFILE); // Restaura Mariana
+            setQuickActions(DEMO_QUICK_ACTIONS);
+            setSocialLinks(DEMO_SOCIAL_LINKS);
+            setCustomActions(DEMO_CUSTOM_ACTIONS);
             setLoading(false);
         } else {
             loadProfile(cleanSlug);
@@ -158,12 +167,9 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             const profile = content.profile as ProfileData;
             
             const isPremium = !!profile.isPremium;
-            // Se não houver data de criação no perfil, usamos a do registro no banco
             const dateStr = profile.createdAt || data.created_at;
             const createdAt = new Date(dateStr);
             const trialEnd = new Date(createdAt.getTime() + 7 * 24 * 60 * 60 * 1000); 
-            
-            // Se a data for inválida (perfil corrompido ou novo sem save), permitimos o acesso
             const isValidDate = !isNaN(createdAt.getTime());
 
             if (!isPremium && isValidDate && new Date() > trialEnd) {

@@ -1,6 +1,7 @@
 
 import { ProfileData, QuickAction, SocialLink } from './types';
 
+// DADOS DA DEMONSTRAÇÃO (Mariana Xavier)
 export const DEFAULT_PROFILE: ProfileData = {
   alias: "marianaxavier",
   name: "Mariana Xavier",
@@ -13,9 +14,30 @@ export const DEFAULT_PROFILE: ProfileData = {
   avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=256&h=256&auto=format&fit=crop",
   backgroundUrl: "https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1920&auto=format&fit=crop",
   themeColor: "#D4AF37",
-  isPremium: false
+  isPremium: true,
+  metaPixelId: "123456789",
+  ga4MeasurementId: "G-DEMO123"
 };
 
+export const DEMO_QUICK_ACTIONS: QuickAction[] = [
+  { icon: "fa-brands fa-whatsapp", label: "WhatsApp", url: "https://wa.me/5511999999999", type: "whatsapp" },
+  { icon: "fa-solid fa-location-dot", label: "Localização", url: "https://maps.google.com/?q=Av. Paulista, 1000", type: "map" },
+  { icon: "fa-solid fa-envelope", label: "E-mail", url: "mailto:contato@exemplo.com", type: "email" },
+  { icon: "fa-solid fa-globe", label: "Website", url: "https://google.com", type: "website" }
+];
+
+export const DEMO_CUSTOM_ACTIONS: QuickAction[] = [
+  { icon: "fa-solid fa-house-chimney", label: "Imóveis à Venda", url: "https://google.com", type: "custom" },
+  { icon: "fa-solid fa-calendar-check", label: "Agendar Visita", url: "https://google.com", type: "custom" }
+];
+
+export const DEMO_SOCIAL_LINKS: SocialLink[] = [
+  { icon: "fa-brands fa-instagram", url: "https://instagram.com", label: "Instagram" },
+  { icon: "fa-brands fa-linkedin-in", url: "https://linkedin.com", label: "LinkedIn" },
+  { icon: "fa-brands fa-facebook-f", url: "https://facebook.com", label: "Facebook" }
+];
+
+// DADOS EM BRANCO (Para Novos Usuários)
 export const BLANK_PROFILE: ProfileData = {
   alias: "",
   name: "",
