@@ -71,34 +71,35 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
 
     // --- META PIXEL ---
     if (profileData.metaPixelId) {
-      // Injetar script se não existir
       if (!window._fbq_script_loaded) {
         (function(f:any,b:any,e:any,v:any,n?:any,t?:any,s?:any)
         {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
         n.callMethod.apply(n,arguments):n.queue.push(arguments)};
         if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
         n.queue=[];t=b.createElement(e);t.async=!0;
-        t.src=v;s=b.getElementsByTagName(e)[0];
+        t.src=v;
+        t.onerror = () => console.warn("[AnaliseCardPro] Meta Pixel bloqueado pelo navegador (AdBlock).");
+        s=b.getElementsByTagName(e)[0];
         s.parentNode.insertBefore(t,s)}(window,document,'script',
         'https://connect.facebook.net/en_US/fbevents.js'));
         window._fbq_script_loaded = true;
       }
 
-      // Executar Track
+      // Disparar sempre que o ID estiver presente e o carregamento terminar
       if (typeof window.fbq === 'function') {
         window.fbq('init', profileData.metaPixelId);
         window.fbq('track', 'PageView');
-        console.debug(`[AnaliseCardPro] Meta Pixel ${profileData.metaPixelId} disparado.`);
+        console.debug(`[AnaliseCardPro] Meta Pixel ${profileData.metaPixelId} inicializado.`);
       }
     }
 
     // --- GOOGLE ANALYTICS 4 ---
     if (profileData.ga4MeasurementId) {
-      // Injetar script se não existir
       if (!window._ga4_script_loaded) {
         const script = document.createElement('script');
         script.async = true;
         script.src = `https://www.googletagmanager.com/gtag/js?id=${profileData.ga4MeasurementId}`;
+        script.onerror = () => console.warn("[AnaliseCardPro] Google Analytics bloqueado pelo navegador.");
         document.head.appendChild(script);
 
         window.dataLayer = window.dataLayer || [];
@@ -107,7 +108,6 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         window._ga4_script_loaded = true;
       }
 
-      // Executar Config
       if (typeof window.gtag === 'function') {
         window.gtag('config', profileData.ga4MeasurementId, { 
           page_path: window.location.pathname,
@@ -126,17 +126,18 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         finalUrl = `https://${finalUrl}`;
     }
 
+    // Adicionar UTMs
     try {
         const urlObj = new URL(finalUrl);
         if (urlObj.protocol.startsWith('http')) {
             urlObj.searchParams.set('utm_source', 'analisecardpro');
             urlObj.searchParams.set('utm_medium', 'card');
-            urlObj.searchParams.set('utm_campaign', `${profileData.alias}_${type}`);
+            urlObj.searchParams.set('utm_campaign', `${profileData.alias || 'perfil'}_${type}`);
             finalUrl = urlObj.toString();
         }
     } catch (e) {}
 
-    // Track internally in Supabase
+    // Track interno
     if (userId) {
       supabase.from('profiles_clicks').insert({
         profile_id: userId,
@@ -147,11 +148,11 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       }).then(({error}) => error && console.error(error));
     }
 
-    // Track in external pixels if available
-    if (typeof window.fbq === 'function' && !isDemo) {
+    // Track Externo (Seguro contra falhas de carregamento)
+    if (typeof window.fbq === 'function') {
         window.fbq('track', 'Contact', { content_name: action.label, content_category: type });
     }
-    if (typeof window.gtag === 'function' && !isDemo) {
+    if (typeof window.gtag === 'function') {
         window.gtag('event', 'click_action', { action_label: action.label, action_type: type });
     }
 
@@ -211,6 +212,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
             setUserId(data.id);
             setProfileData({
                 ...profile,
+                alias: data.alias,
                 isPremium,
                 createdAt: isValidDate ? createdAt.toISOString() : new Date().toISOString()
             });
