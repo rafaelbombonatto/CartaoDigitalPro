@@ -29,8 +29,8 @@ declare global {
     fbq: any;
     gtag: any;
     dataLayer: any;
-    _fbq_initialized?: boolean;
-    _ga4_initialized?: boolean;
+    _fbq_script_loaded?: boolean;
+    _ga4_script_loaded?: boolean;
   }
 }
 
@@ -65,35 +65,56 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       return allActions.filter(isActionValid);
   }, [quickActions, customActions, isDemo]);
 
+  // Lógica de Rastreamento (Meta Pixel & GA4)
   useEffect(() => {
     if (loading || error || isDemo) return;
 
-    if (profileData.metaPixelId && !window._fbq_initialized) {
-      (function(f:any,b:any,e:any,v:any,n?:any,t?:any,s?:any)
-      {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-      n.queue=[];t=b.createElement(e);t.async=!0;
-      t.src=v;s=b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t,s)}(window,document,'script',
-      'https://connect.facebook.net/en_US/fbevents.js'));
+    // --- META PIXEL ---
+    if (profileData.metaPixelId) {
+      // Injetar script se não existir
+      if (!window._fbq_script_loaded) {
+        (function(f:any,b:any,e:any,v:any,n?:any,t?:any,s?:any)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window,document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js'));
+        window._fbq_script_loaded = true;
+      }
 
-      window.fbq('init', profileData.metaPixelId);
-      window.fbq('track', 'PageView');
-      window._fbq_initialized = true;
+      // Executar Track
+      if (typeof window.fbq === 'function') {
+        window.fbq('init', profileData.metaPixelId);
+        window.fbq('track', 'PageView');
+        console.debug(`[AnaliseCardPro] Meta Pixel ${profileData.metaPixelId} disparado.`);
+      }
     }
 
-    if (profileData.ga4MeasurementId && !window._ga4_initialized) {
-      const script = document.createElement('script');
-      script.async = true;
-      script.src = `https://www.googletagmanager.com/gtag/js?id=${profileData.ga4MeasurementId}`;
-      document.head.appendChild(script);
+    // --- GOOGLE ANALYTICS 4 ---
+    if (profileData.ga4MeasurementId) {
+      // Injetar script se não existir
+      if (!window._ga4_script_loaded) {
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${profileData.ga4MeasurementId}`;
+        document.head.appendChild(script);
 
-      window.dataLayer = window.dataLayer || [];
-      window.gtag = function(){window.dataLayer.push(arguments);}
-      window.gtag('js', new Date());
-      window.gtag('config', profileData.ga4MeasurementId, { page_path: window.location.pathname });
-      window._ga4_initialized = true;
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function(){window.dataLayer.push(arguments);}
+        window.gtag('js', new Date());
+        window._ga4_script_loaded = true;
+      }
+
+      // Executar Config
+      if (typeof window.gtag === 'function') {
+        window.gtag('config', profileData.ga4MeasurementId, { 
+          page_path: window.location.pathname,
+          page_title: profileData.name || 'Digital Card'
+        });
+        console.debug(`[AnaliseCardPro] GA4 ${profileData.ga4MeasurementId} configurado.`);
+      }
     }
   }, [profileData.metaPixelId, profileData.ga4MeasurementId, loading, error, isDemo]);
 
@@ -115,6 +136,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         }
     } catch (e) {}
 
+    // Track internally in Supabase
     if (userId) {
       supabase.from('profiles_clicks').insert({
         profile_id: userId,
@@ -125,6 +147,14 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
       }).then(({error}) => error && console.error(error));
     }
 
+    // Track in external pixels if available
+    if (typeof window.fbq === 'function' && !isDemo) {
+        window.fbq('track', 'Contact', { content_name: action.label, content_category: type });
+    }
+    if (typeof window.gtag === 'function' && !isDemo) {
+        window.gtag('event', 'click_action', { action_label: action.label, action_type: type });
+    }
+
     setTimeout(() => { window.open(finalUrl, '_blank'); }, 100);
   }, [profileData, isDemo, userId]);
 
@@ -133,7 +163,7 @@ const PublicCard: React.FC<PublicCardProps> = ({ slug }) => {
         const cleanSlug = slug.toLowerCase().trim();
         if (cleanSlug === 'exemplo' || cleanSlug === 'demo') {
             setIsDemo(true);
-            setProfileData(DEFAULT_PROFILE); // Restaura Mariana
+            setProfileData(DEFAULT_PROFILE);
             setQuickActions(DEMO_QUICK_ACTIONS);
             setSocialLinks(DEMO_SOCIAL_LINKS);
             setCustomActions(DEMO_CUSTOM_ACTIONS);
